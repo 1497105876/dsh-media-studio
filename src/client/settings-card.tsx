@@ -16,7 +16,7 @@
  * ns = cordis.patch.yml 的 insert id）。保存用 scope.apply 的 path 寻址一次
  * 写入，revision 冲突时提示并重读。
  */
-import { createElement, useCallback, useEffect, useId, useState } from 'react'
+import { createElement, useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { SettingsSecretField } from '@deepseek-ai/dsh-client-ui-primitives'
 
@@ -283,19 +283,6 @@ function ProviderSelect(props: { kind: MediaKind, value: string, onChange: (v: s
       {!known && props.value !== '' ? <option value={props.value}>{props.value}</option> : null}
       {options.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
     </select>
-  )
-}
-
-/** 可下拉的输入框：常见档位点选，也允许手输服务商支持的自定义值。 */
-function ComboBox(props: { value: string, options: readonly string[], onChange: (v: string) => void }): JSX.Element {
-  const listId = useId()
-  return (
-    <>
-      <input style={input} value={props.value} list={listId} onChange={e => props.onChange(e.target.value)} />
-      <datalist id={listId}>
-        {props.options.map(o => <option key={o} value={o} />)}
-      </datalist>
-    </>
   )
 }
 
@@ -628,31 +615,30 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
         </Line>
         <Line>
           <span style={rowHead}>图片</span>
-          <Slot label="分辨率" title="常用 1K–4K，也可手输服务商支持的其他档位">
-            <ComboBox value={param('imageResolution')} options={IMAGE_RESOLUTIONS}
+          <Slot label="分辨率" title="分辨率档位；要用人家的自定义档位时改 profile patch 里的 imageResolution">
+            <Select value={param('imageResolution')} options={IMAGE_RESOLUTIONS}
               onChange={v => setParam('imageResolution', v)} />
           </Slot>
           <Slot label="画幅" title="宽高比，如 16:9 横、9:16 竖">
-            <ComboBox value={param('imageAspectRatio')} options={IMAGE_RATIOS}
+            <Select value={param('imageAspectRatio')} options={IMAGE_RATIOS}
               onChange={v => setParam('imageAspectRatio', v)} />
           </Slot>
         </Line>
         <Line>
           <span style={rowHead}>视频</span>
           <Slot label="时长" title="4–12 秒">
-            <ComboBox value={param('videoSeconds')} options={VIDEO_SECONDS}
+            <Select value={param('videoSeconds')} options={VIDEO_SECONDS}
               onChange={v => {
-                if (v.trim() === '') return
                 const n = Math.round(Number(v))
                 if (Number.isFinite(n)) setParam('videoSeconds', Math.min(12, Math.max(4, n)))
               }} />
           </Slot>
-          <Slot label="尺寸" title="常用 720P / 1080P / 1K / 2K">
-            <ComboBox value={param('videoSize')} options={VIDEO_SIZES}
+          <Slot label="尺寸" title="分辨率档位">
+            <Select value={param('videoSize')} options={VIDEO_SIZES}
               onChange={v => setParam('videoSize', v)} />
           </Slot>
           <Slot label="画幅" title="宽高比">
-            <ComboBox value={param('videoAspectRatio')} options={VIDEO_RATIOS}
+            <Select value={param('videoAspectRatio')} options={VIDEO_RATIOS}
               onChange={v => setParam('videoAspectRatio', v)} />
           </Slot>
         </Line>
