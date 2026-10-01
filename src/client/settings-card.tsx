@@ -32,7 +32,7 @@ const IMAGE_RESOLUTIONS = ['1K', '2K', '3K', '4K']
 const IMAGE_RATIOS = ['1:1', '3:4', '4:3', '16:9', '9:16', '2:3', '3:2', '21:9']
 const VIDEO_SIZES = ['720P', '1080P', '1K', '2K']
 const VIDEO_RATIOS = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']
-const VIDEO_SECONDS = ['4', '5', '6', '8', '10', '12']
+const VIDEO_SECONDS = ['4', '5', '6', '7', '8', '9', '10', '11', '12']
 
 const PROVIDER_ADAPTERS = ['agnes', 'openai', 'openai-videos']
 
