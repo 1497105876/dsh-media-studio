@@ -18,25 +18,29 @@ export interface Config {
     defaultImageModel: Volatile<string>;
     /** Entry id used when a tool call omits `model`. */
     defaultVideoModel: Volatile<string>;
-    /** Auto-save directory for generated media. Relative paths resolve against the session working directory. */
+    /**
+     * Auto-save directory for generated media. `~` expands to the user home
+     * (default `~/.dsh/media-studio`); relative paths resolve against the
+     * session working directory.
+     */
     outputDir: Volatile<string>;
-    /** Write every generated file to `outputDir` (the "download one copy automatically" behavior). */
+    /** Write every generated image to `outputDir` (videos always land there). */
     autoSave: Volatile<boolean>;
-    /** Default image resolution tier (Agnes-style; mapped to pixels for other providers). */
-    imageResolution: Volatile<'1K' | '2K' | '3K' | '4K'>;
-    /** Default image aspect ratio. */
+    /** Default image resolution tier (1K–4K) or any provider-specific size string. */
+    imageResolution: Volatile<string>;
+    /** Default image aspect ratio, e.g. `16:9`. */
     imageAspectRatio: Volatile<string>;
     /** Default video duration in seconds (Agnes accepts 4–12). */
     videoSeconds: Volatile<number>;
-    /** Default video size tier. */
-    videoSize: Volatile<'720P' | '1080P' | '1K' | '2K'>;
+    /** Default video size tier (720P/1080P/1K/2K) or any provider-specific size string. */
+    videoSize: Volatile<string>;
     /** Default video aspect ratio. */
     videoAspectRatio: Volatile<string>;
     /** HTTP timeout for generation requests (ms). */
-    requestTimeoutMs: number;
+    requestTimeoutMs: Volatile<number>;
     /** Video task polling interval (ms). */
-    videoPollIntervalMs: number;
+    videoPollIntervalMs: Volatile<number>;
     /** Video task polling budget (ms). */
-    videoPollTimeoutMs: number;
+    videoPollTimeoutMs: Volatile<number>;
 }
 export declare const Config: Schema<Config>;

@@ -193,7 +193,7 @@ async function runImageGeneration(
     aspectRatio: params.aspectRatio,
     referenceImages: params.referenceImages,
     signal: params.signal,
-    timeoutMs: gc.config.requestTimeoutMs,
+    timeoutMs: gc.config.requestTimeoutMs.get(),
   })
   const name = `image-${entry.id}-${Date.now()}.${generated.mediaType === 'image/jpeg' ? 'jpg' : generated.mediaType === 'image/webp' ? 'webp' : 'png'}`
   const item = await commitImage(gc.ctx.attachments, {
@@ -233,9 +233,9 @@ async function runVideoGeneration(
     ...(params.lastFrame === undefined ? {} : { lastFrame: params.lastFrame }),
     referenceImages: params.referenceImages,
     signal: params.signal,
-    timeoutMs: gc.config.requestTimeoutMs,
-    pollIntervalMs: gc.config.videoPollIntervalMs,
-    pollTimeoutMs: gc.config.videoPollTimeoutMs,
+    timeoutMs: gc.config.requestTimeoutMs.get(),
+    pollIntervalMs: gc.config.videoPollIntervalMs.get(),
+    pollTimeoutMs: gc.config.videoPollTimeoutMs.get(),
     ...(params.onProgress === undefined ? {} : { onProgress: params.onProgress }),
   })
   const item = await commitVideo({

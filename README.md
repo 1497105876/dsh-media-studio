@@ -23,7 +23,7 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 | 斜杠命令 | `/image`、`/video`，加 `--wait` 前缀同步等待并在命令卡片内联展示 |
 | 后台生成 | 默认走 `ctx.jobs` 后台任务，立即返回任务句柄，完成后推送进会话 |
 | 富渲染 | 工具行 / 命令行内联画廊与视频播放器，带下载、另存为 |
-| 自动保存 | 生成结果写进输出目录（默认 `media-output`，相对会话工作目录解析） |
+| 自动保存 | 生成结果写进输出目录（默认 `~/.dsh/media-studio`，`~` 展开到用户主目录；相对路径基于会话工作目录） |
 | 凭据安全 | API key 走 `credential-ref`（环境变量名），永不写进配置文件 |
 | 设置页 | 所有配置项 `volatile`，出现在 dsh 设置页的插件表单里 |
 
@@ -109,13 +109,14 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 
 ## 配置
 
-**设置页（推荐）**：重启 dsh 后打开 设置 → 插件 → media-studio：
+**设置页（推荐）**：打开 设置 → 插件 → media-studio 的配置卡片：
 
-- **配置表单**：模型条目、默认模型、输出目录、分辨率、画幅、视频时长等全部
-  volatile 配置项由 dsh 官方配置表单自动生成并校验保存，即时生效。
-- **凭据（API Key）**：插件在同页的自己的卡片里列出所有被引用的凭据名
-  （如 `AGNES_API_KEY`），直接粘贴 Key 保存——走官方 `remote.credentials`
-  通道存进 dsh 凭据库（只写不读）。
+- **模型**：图片 / 视频条目增删改，API Key 就在条目里填——走官方
+  `remote.credentials` 通道存进 dsh 凭据库（只写不读），保存即时生效。
+- **默认参数**：默认模型、输出目录、分辨率 / 画幅 / 时长（常见档位下拉
+  点选，也允许手输服务商支持的自定义值）。这些只是默认值，对话里明确
+  指定了参数时以对话指定的为准。
+- **高级**：请求超时与视频轮询节奏，默认折叠，一般不用动。
 
 凭据也可以用系统环境变量代替（`setx AGNES_API_KEY sk-...` 后重启 dsh），
 两种方式插件都会识别。
@@ -126,10 +127,10 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 |---|---|---|
 | `imageModels` / `videoModels` | 预设清单 | 模型条目目录 |
 | `defaultImageModel` / `defaultVideoModel` | `agnes-image` / `agnes-video` | 工具省略 `model` 时的兜底 |
-| `outputDir` | `media-output` | 自动保存目录（相对会话工作目录） |
+| `outputDir` | `~/.dsh/media-studio` | 自动保存目录（`~` 展开到用户主目录；相对路径基于会话工作目录） |
 | `autoSave` | `true` | 是否自动落盘一份 |
-| `imageResolution` / `imageAspectRatio` | `2K` / `16:9` | 图片默认参数 |
-| `videoSeconds` / `videoSize` / `videoAspectRatio` | `5` / `720P` / `16:9` | 视频默认参数 |
+| `imageResolution` / `imageAspectRatio` | `2K` / `16:9` | 图片默认参数（允许服务商支持的其他档位） |
+| `videoSeconds` / `videoSize` / `videoAspectRatio` | `5` / `720P` / `16:9` | 视频默认参数（允许服务商支持的其他档位） |
 | `requestTimeoutMs` | `300000` | 生成请求超时 |
 | `videoPollIntervalMs` / `videoPollTimeoutMs` | `2000` / `900000` | 视频任务轮询 |
 

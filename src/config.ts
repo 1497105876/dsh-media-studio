@@ -31,26 +31,30 @@ export interface Config {
   defaultImageModel: Volatile<string>
   /** Entry id used when a tool call omits `model`. */
   defaultVideoModel: Volatile<string>
-  /** Auto-save directory for generated media. Relative paths resolve against the session working directory. */
+  /**
+   * Auto-save directory for generated media. `~` expands to the user home
+   * (default `~/.dsh/media-studio`); relative paths resolve against the
+   * session working directory.
+   */
   outputDir: Volatile<string>
-  /** Write every generated file to `outputDir` (the "download one copy automatically" behavior). */
+  /** Write every generated image to `outputDir` (videos always land there). */
   autoSave: Volatile<boolean>
-  /** Default image resolution tier (Agnes-style; mapped to pixels for other providers). */
-  imageResolution: Volatile<'1K' | '2K' | '3K' | '4K'>
-  /** Default image aspect ratio. */
+  /** Default image resolution tier (1K–4K) or any provider-specific size string. */
+  imageResolution: Volatile<string>
+  /** Default image aspect ratio, e.g. `16:9`. */
   imageAspectRatio: Volatile<string>
   /** Default video duration in seconds (Agnes accepts 4–12). */
   videoSeconds: Volatile<number>
-  /** Default video size tier. */
-  videoSize: Volatile<'720P' | '1080P' | '1K' | '2K'>
+  /** Default video size tier (720P/1080P/1K/2K) or any provider-specific size string. */
+  videoSize: Volatile<string>
   /** Default video aspect ratio. */
   videoAspectRatio: Volatile<string>
   /** HTTP timeout for generation requests (ms). */
-  requestTimeoutMs: number
+  requestTimeoutMs: Volatile<number>
   /** Video task polling interval (ms). */
-  videoPollIntervalMs: number
+  videoPollIntervalMs: Volatile<number>
   /** Video task polling budget (ms). */
-  videoPollTimeoutMs: number
+  videoPollTimeoutMs: Volatile<number>
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -58,14 +62,16 @@ export const Config: Schema<Config> = Schema.object({
   videoModels: Schema.array(modelEntrySchema).default([...PRESET_VIDEO_MODELS]).volatile(),
   defaultImageModel: Schema.string().default('agnes-image').volatile(),
   defaultVideoModel: Schema.string().default('agnes-video').volatile(),
-  outputDir: Schema.string().default('media-output').volatile(),
+  outputDir: Schema.string().default('~/.dsh/media-studio').volatile(),
   autoSave: Schema.boolean().default(true).volatile(),
-  imageResolution: Schema.union(['1K', '2K', '3K', '4K']).default('2K').volatile(),
-  imageAspectRatio: Schema.union(['1:1', '3:4', '4:3', '16:9', '9:16', '2:3', '3:2', '21:9']).default('16:9').volatile(),
+  // 分辨率/尺寸/画幅放开成自由字符串：设置卡片是可下拉的输入框，常见档位点选，
+  // 服务商支持的其他档位（如具体像素）也允许手输。
+  imageResolution: Schema.string().default('2K').volatile(),
+  imageAspectRatio: Schema.string().default('16:9').volatile(),
   videoSeconds: Schema.number().step(1).min(4).max(12).default(5).volatile(),
-  videoSize: Schema.union(['720P', '1080P', '1K', '2K']).default('720P').volatile(),
-  videoAspectRatio: Schema.union(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']).default('16:9').volatile(),
-  requestTimeoutMs: Schema.number().default(300_000),
-  videoPollIntervalMs: Schema.number().default(2_000),
-  videoPollTimeoutMs: Schema.number().default(900_000),
+  videoSize: Schema.string().default('720P').volatile(),
+  videoAspectRatio: Schema.string().default('16:9').volatile(),
+  requestTimeoutMs: Schema.number().default(300_000).volatile(),
+  videoPollIntervalMs: Schema.number().default(2_000).volatile(),
+  videoPollTimeoutMs: Schema.number().default(900_000).volatile(),
 }) as unknown as Schema<Config>

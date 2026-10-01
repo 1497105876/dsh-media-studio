@@ -4,6 +4,7 @@
  * loading for image-to-image.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import type { AttachmentStore, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ReferenceImage } from './providers.js'
@@ -58,9 +59,17 @@ export async function readReferenceImage(input: string): Promise<ReferenceImage>
   return { dataUri: toDataUri(bytes, mediaType) }
 }
 
-/** Resolve the auto-save directory; relative paths resolve against the session working directory. */
+/**
+ * Resolve the auto-save directory. `~` / `~/...` expands to the user home, so
+ * the default `~/.dsh/media-studio` lands next to the dsh profile whatever the
+ * OS account is; relative paths resolve against the session working directory.
+ */
 export function resolveOutputDir(outputDir: string, cwd: string | undefined): string {
-  return isAbsolute(outputDir) ? outputDir : resolve(cwd ?? process.cwd(), outputDir)
+  const raw = outputDir.trim()
+  const expanded = raw === '~' || raw.startsWith('~/') || raw.startsWith('~\\')
+    ? join(homedir(), raw.slice(1))
+    : raw
+  return isAbsolute(expanded) ? expanded : resolve(cwd ?? process.cwd(), expanded)
 }
 
 /** Timestamped, collision-resistant media file name. */

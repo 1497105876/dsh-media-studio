@@ -13,7 +13,11 @@ export declare function toDataUri(bytes: Uint8Array, mediaType: string): string;
  * only accepts public URLs or data URIs).
  */
 export declare function readReferenceImage(input: string): Promise<ReferenceImage>;
-/** Resolve the auto-save directory; relative paths resolve against the session working directory. */
+/**
+ * Resolve the auto-save directory. `~` / `~/...` expands to the user home, so
+ * the default `~/.dsh/media-studio` lands next to the dsh profile whatever the
+ * OS account is; relative paths resolve against the session working directory.
+ */
 export declare function resolveOutputDir(outputDir: string, cwd: string | undefined): string;
 /** Timestamped, collision-resistant media file name. */
 export declare function uniqueMediaName(prefix: string, extension: string): string;
