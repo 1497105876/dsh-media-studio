@@ -36,11 +36,11 @@ export interface Config {
     videoSize: Volatile<string>;
     /** Default video aspect ratio. */
     videoAspectRatio: Volatile<string>;
-    /** HTTP timeout for generation requests (ms). */
-    requestTimeoutMs: Volatile<number>;
-    /** Video task polling interval (ms). */
-    videoPollIntervalMs: Volatile<number>;
-    /** Video task polling budget (ms). */
-    videoPollTimeoutMs: Volatile<number>;
+    /** HTTP timeout for generation requests (seconds). */
+    requestTimeoutSec: Volatile<number>;
+    /** Video task polling interval (seconds). */
+    videoPollIntervalSec: Volatile<number>;
+    /** Video task polling budget (seconds). */
+    videoPollTimeoutSec: Volatile<number>;
 }
 export declare const Config: Schema<Config>;

@@ -73,7 +73,7 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           const generated = await generateImage(entry, apiKey, {
             ...params,
             signal: invocation.signal,
-            timeoutMs: config.requestTimeoutMs.get(),
+            timeoutMs: config.requestTimeoutSec.get() * 1000,
           })
           const name = `image-${entry.id}-${Date.now()}.${imageExtension(generated.mediaType)}`
           const item = await commitImage(ctx.attachments, {
@@ -96,7 +96,7 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           owner: agent.id,
           work: async (job, signal) => {
             job.updateProgress(`generating image with ${entry.id}…`)
-            const generated = await generateImage(entry, apiKey, { ...params, signal, timeoutMs: config.requestTimeoutMs.get() })
+            const generated = await generateImage(entry, apiKey, { ...params, signal, timeoutMs: config.requestTimeoutSec.get() * 1000 })
             const name = `image-${entry.id}-${Date.now()}.${imageExtension(generated.mediaType)}`
             const item = await commitImage(ctx.attachments, {
               name,
@@ -140,9 +140,9 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           const generated = await generateVideo(entry, apiKey, {
             ...params,
             signal,
-            timeoutMs: config.requestTimeoutMs.get(),
-            pollIntervalMs: config.videoPollIntervalMs.get(),
-            pollTimeoutMs: config.videoPollTimeoutMs.get(),
+            timeoutMs: config.requestTimeoutSec.get() * 1000,
+            pollIntervalMs: config.videoPollIntervalSec.get() * 1000,
+            pollTimeoutMs: config.videoPollTimeoutSec.get() * 1000,
             ...(onProgress === undefined ? {} : { onProgress }),
           })
           return [await commitVideo({
