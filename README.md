@@ -65,28 +65,26 @@ cp -r . ~/.dsh/profiles/web/node_modules/@gw/dsh-media-studio/
 export AGNES_API_KEY=sk-...
 ```
 
-## 预设模型
+## 模型配置
 
-图片：
+默认只内置 **Agnes**（有免费额度，填一个 `AGNES_API_KEY` 就能用，支持文生图 /
+图生图 / 文生视频）。
 
-| id | 说明 | 凭据 |
-|---|---|---|
-| `agnes-image` | Agnes agnes-image-2.5-flash（当前免费，支持图生图/多图） | `AGNES_API_KEY` |
-| `gpt-image` | OpenAI gpt-image-1 | `OPENAI_API_KEY` |
-| `nano-banana` | Gemini 2.5 flash image（OpenAI 兼容端点） | `GEMINI_API_KEY` |
-| `kolors` | 硅基流动 Kolors（国内直连） | `SILICONFLOW_API_KEY` |
-| `flux-schnell` | 硅基流动 FLUX.1-schnell | `SILICONFLOW_API_KEY` |
-| `wanx` | 阿里云百炼 wanx2.1-t2i-turbo | `DASHSCOPE_API_KEY` |
+其他服务商在设置卡片里「+ 添加」即可，条目只需四个字段：
+`provider`（适配器）+ `model`（模型名）+ `baseURL`（接口地址）+ `apiKeyEnv`
+（Key 引用名）。常见服务商参考：
 
-视频：
+| 服务商 | provider | baseURL | model 示例 | Key 引用名 |
+|---|---|---|---|---|
+| OpenAI 生图 | `openai` | `https://api.openai.com/v1` | `gpt-image-1` | `OPENAI_API_KEY` |
+| OpenAI Sora 2 | `openai-videos` | `https://api.openai.com/v1` | `sora-2` | `OPENAI_API_KEY` |
+| Gemini 生图 | `openai` | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash-image` | `GEMINI_API_KEY` |
+| 硅基流动 | `openai` | `https://api.siliconflow.cn/v1` | `Kwai-Kolors/Kolors` | `SILICONFLOW_API_KEY` |
+| 阿里云百炼 | `openai` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `wanx2.1-t2i-turbo` | `DASHSCOPE_API_KEY` |
 
-| id | 说明 | 凭据 |
-|---|---|---|
-| `agnes-video` | Agnes agnes-video-2.5-flash（当前免费，720P） | `AGNES_API_KEY` |
-| `agnes-video-25` | Agnes agnes-video-2.5（720P–2K） | `AGNES_API_KEY` |
-| `sora-2` | OpenAI Sora 2（Videos 风格异步接口） | `OPENAI_API_KEY` |
-
-自定义条目只需 `id + provider + model + baseURL + apiKeyEnv` 五个字段。
+provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容图片接口）、
+`openai-videos`（OpenAI Videos 风格异步接口）。任何 OpenAI 兼容的中转 /
+自建服务都能接。
 
 ## 工具
 
