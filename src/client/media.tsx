@@ -1,11 +1,16 @@
 /**
  * Shared browser components: inline media gallery, video player, and the
- * download / save-as actions the stock chat UI does not provide.
+ * download action the stock chat UI does not provide.
  *
  * Rendering rules follow the DSH client contracts (packages/client/ui-tool
  * `tool.call.toolview`, ui-chat `conversation.chat.commandview` and
  * `conversation.message.images`): components receive session-authorized image
  * loaders and node data through props and never reach into services.
+ *
+ * Viewer experience: images open in a lightbox with name / dimensions / size
+ * info, click-to-toggle 100% zoom (scrollable), fade-in, Esc / backdrop
+ * close; the video card is width-adaptive (portrait safe) with a
+ * name · size · download info row.
  */
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
@@ -47,6 +52,13 @@ function fileLabel(item: { name: string }): string {
   return item.name
 }
 
+function formatBytes(bytes: number | undefined): string {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes <= 0) return ''
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${bytes} B`
+}
+
 /** Trigger a direct browser download ("下载" — one copy, straight to the Downloads folder). */
 export function DownloadButton({ url, name, style }: { url: string; name: string; style?: CSSProperties }): ReactNode {
   return (
@@ -60,41 +72,37 @@ export function DownloadButton({ url, name, style }: { url: string; name: string
   )
 }
 
-/** "另存为": File System Access API picker, falling back to opening the URL. */
-export function SaveAsButton({ url, name, style }: { url: string; name: string; style?: CSSProperties }): ReactNode {
-  const onClick = useCallback(async () => {
-    const picker = (window as unknown as { showSaveFilePicker?: (options: unknown) => Promise<{ createWritable(): Promise<{ write(data: unknown): Promise<void>; close(): Promise<void> }> }> }).showSaveFilePicker
-    if (typeof picker === 'function') {
-      try {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const handle = await picker({ suggestedName: name })
-        const writable = await handle.createWritable()
-        await writable.write(blob)
-        await writable.close()
-        return
-      } catch {
-        // User cancelled or the picker failed: fall through to plain open.
-      }
-    }
-    window.open(url, '_blank', 'noopener')
-  }, [url, name])
-  return (
-    <button
-      type="button"
-      onClick={() => void onClick()}
-      style={{
-        fontSize: 12, color: '#4a90d9', background: 'none', border: 'none',
-        padding: 0, cursor: 'pointer', ...style,
-      }}
-    >
-      💾 另存为
-    </button>
-  )
+/** Inject once: the lightbox fade-in animation (inline styles can't keyframe). */
+let lightboxStyleInjected = false
+function injectLightboxStyle(): void {
+  if (lightboxStyleInjected) return
+  lightboxStyleInjected = true
+  const tag = document.createElement('style')
+  tag.dataset.plugin = 'dsh-media-studio'
+  tag.textContent = '@keyframes ms-fade-in{from{opacity:0}to{opacity:1}}'
+  document.head.appendChild(tag)
 }
 
-/** Full-size overlay preview with download / save-as / close actions. */
-function Lightbox({ url, name, onClose }: { url: string; name: string; onClose: () => void }): ReactNode {
+const lightboxBar: CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+  padding: '0 4px', minHeight: 24,
+}
+const lightboxText: CSSProperties = {
+  fontSize: 12, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+}
+const lightboxClose: CSSProperties = {
+  marginLeft: 'auto', fontSize: 12, color: '#ddd', background: 'none',
+  border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0,
+}
+
+/** Full-size overlay preview: name / dimensions / size info, click toggles
+ *  fit-window ↔ 100% zoom (scrollable), one-click download, Esc / backdrop close. */
+function Lightbox({ url, name, size, onClose }: { url: string; name: string; size?: number; onClose: () => void }): ReactNode {
+  const [full, setFull] = useState(false)
+  const [dims, setDims] = useState<{ w: number; h: number } | undefined>(undefined)
+  useEffect(() => {
+    injectLightboxStyle()
+  }, [])
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
@@ -102,25 +110,51 @@ function Lightbox({ url, name, onClose }: { url: string; name: string; onClose: 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  const info = [
+    dims !== undefined ? `${dims.w}×${dims.h}` : undefined,
+    formatBytes(size) === '' ? undefined : formatBytes(size),
+  ].filter(Boolean).join(' · ')
   return (
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.78)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.82)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: 12, gap: 8, animation: 'ms-fade-in 160ms ease-out',
       }}
     >
-      <img src={url} alt={name} style={{ maxWidth: '92vw', maxHeight: '80vh', borderRadius: 8 }} />
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }} onClick={event => event.stopPropagation()}>
-        <DownloadButton url={url} name={name} style={{ color: '#8fc4ff' }} />
-        <SaveAsButton url={url} name={name} style={{ color: '#8fc4ff' }} />
-        <button
-          type="button"
-          onClick={onClose}
-          style={{ fontSize: 12, color: '#ddd', background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          ✕ 关闭
-        </button>
+      <div style={lightboxBar} onClick={event => event.stopPropagation()}>
+        <span style={lightboxText} title={name}>{name}{info === '' ? '' : `　${info}`}</span>
+        <button type="button" style={lightboxClose} onClick={onClose}>✕ 关闭</button>
+      </div>
+      <div
+        style={{
+          flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          ...(full ? { overflow: 'auto' } : {}),
+        }}
+      >
+        <img
+          src={url}
+          alt={name}
+          onLoad={event => {
+            setDims({ w: event.currentTarget.naturalWidth, h: event.currentTarget.naturalHeight })
+          }}
+          onClick={event => {
+            event.stopPropagation()
+            setFull(previous => !previous)
+          }}
+          style={{
+            borderRadius: 8,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.45)',
+            ...(full
+              ? { maxWidth: 'none', maxHeight: 'none', cursor: 'zoom-out', flexShrink: 0 }
+              : { maxWidth: '92vw', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in' }),
+          }}
+        />
+      </div>
+      <div style={lightboxBar} onClick={event => event.stopPropagation()}>
+        <span style={{ ...lightboxText, opacity: 0.6 }}>{full ? '点击图片回到适应窗口' : '点击图片查看原始尺寸'}</span>
+        <DownloadButton url={url} name={name} style={{ color: '#8fc4ff', marginLeft: 'auto' }} />
       </div>
     </div>
   )
@@ -155,7 +189,7 @@ interface GalleryItemProps {
   image: ImageSourceLike
   loadImage?: ImageLoaderLike
   size: number
-  onOpen: (url: string, name: string) => void
+  onOpen: (url: string, name: string, bytes?: number) => void
 }
 
 function GalleryTile({ image, loadImage, size, onOpen }: GalleryItemProps): ReactNode {
@@ -167,7 +201,7 @@ function GalleryTile({ image, loadImage, size, onOpen }: GalleryItemProps): Reac
   return (
     <button
       type="button"
-      onClick={() => onOpen(url, name)}
+      onClick={() => onOpen(url, name, image.attachment?.bytes)}
       title={name}
       style={{
         padding: 0, border: 'none', background: 'none', cursor: 'zoom-in',
@@ -192,12 +226,12 @@ export interface MediaGalleryProps {
 }
 
 /**
- * Chat image gallery with inline preview (lightbox), direct download, and
- * save-as — used both as the `conversation.message.images` fill and inside the
+ * Chat image gallery with inline preview (lightbox) and direct download —
+ * used both as the `conversation.message.images` fill and inside the
  * custom tool / command rows.
  */
 export function MediaGallery({ images, loadImage, align = 'start', compact = false, thumbnail = false }: MediaGalleryProps): ReactNode {
-  const [opened, setOpened] = useState<{ url: string; name: string } | undefined>(undefined)
+  const [opened, setOpened] = useState<{ url: string; name: string; size?: number } | undefined>(undefined)
   const size = thumbnail ? 56 : compact ? 80 : 112
   return (
     <div>
@@ -213,24 +247,25 @@ export function MediaGallery({ images, loadImage, align = 'start', compact = fal
             image={image}
             {...(loadImage === undefined ? {} : { loadImage })}
             size={size}
-            onOpen={(url, name) => setOpened({ url, name })}
+            onOpen={(url, name, bytes) => setOpened({ url, name, ...(bytes === undefined ? {} : { size: bytes }) })}
           />
         ))}
       </div>
       {opened === undefined ? null : (
-        <Lightbox url={opened.url} name={opened.name} onClose={() => setOpened(undefined)} />
+        <Lightbox url={opened.url} name={opened.name} size={opened.size} onClose={() => setOpened(undefined)} />
       )}
     </div>
   )
 }
 
-/** Inline video player with download / save-as / open actions. */
+/** Inline video player (width-adaptive, portrait safe) with a name · size · download row. */
 export function MediaVideoCard({ item }: { item: MediaItemMeta }): ReactNode {
   const url = apiFileUrl(item.path)
   const name = fileLabel(item)
   if (url === undefined) {
     return <div style={{ fontSize: 12, opacity: 0.75 }}>{name}（文件未落盘，无法内联播放）</div>
   }
+  const sizeText = formatBytes(item.bytes)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -238,30 +273,30 @@ export function MediaVideoCard({ item }: { item: MediaItemMeta }): ReactNode {
         controls
         preload="metadata"
         src={url}
-        style={{ width: 'min(420px, 100%)', borderRadius: 8, background: '#000' }}
+        style={{
+          width: 'min(520px, 100%)', maxHeight: '70vh', borderRadius: 10,
+          background: '#000', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', display: 'block',
+        }}
       />
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-        <DownloadButton url={url} name={name} />
-        <SaveAsButton url={url} name={name} />
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: 12, color: '#4a90d9', textDecoration: 'none' }}
-        >
-          ↗ 新窗口打开
-        </a>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', maxWidth: 'min(520px, 100%)' }}>
+        <span style={{ fontSize: 12, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          🎬 {name}{sizeText === '' ? '' : ` · ${sizeText}`}
+        </span>
+        <DownloadButton url={url} name={name} style={{ marginLeft: 'auto', flexShrink: 0 }} />
       </div>
     </div>
   )
 }
 
-/** Item grid used by tool / command rows: images (with actions) then videos. */
+/** Item grid used by tool / command rows: images (with actions) then videos.
+ *  A single image renders aspect-true (no square crop); multiple images use a
+ *  compact square grid. */
 export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): ReactNode {
-  const [opened, setOpened] = useState<{ url: string; name: string } | undefined>(undefined)
+  const [opened, setOpened] = useState<{ url: string; name: string; size?: number } | undefined>(undefined)
   const images = items.filter(item => item.kind === 'image')
   const videos = items.filter(item => item.kind === 'video')
   const others = items.filter(item => item.kind !== 'image' && item.kind !== 'video')
+  const many = images.length > 1
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {images.length > 0 && (
@@ -270,23 +305,31 @@ export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): R
             const url = apiFileUrl(item.path)
             const name = fileLabel(item)
             if (url === undefined) return null
+            const sizeText = formatBytes(item.bytes)
             return (
-              <div key={item.path ?? item.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div key={item.path ?? item.name} style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '100%' }}>
                 <button
                   type="button"
-                  onClick={() => setOpened({ url, name })}
-                  style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}
+                  onClick={() => setOpened({ url, name, ...(item.bytes === undefined ? {} : { size: item.bytes }) })}
+                  style={{
+                    padding: 0, border: 'none', background: 'none', cursor: 'zoom-in',
+                    lineHeight: 0, alignSelf: 'flex-start', maxWidth: '100%',
+                  }}
                   title={name}
                 >
                   <img
                     src={url}
                     alt={name}
-                    style={{ width: 112, height: 112, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                    style={many
+                      ? { width: 96, height: 96, objectFit: 'cover', borderRadius: 8, display: 'block' }
+                      : { maxWidth: 'min(360px, 100%)', maxHeight: 300, borderRadius: 8, display: 'block' }}
                   />
                 </button>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <DownloadButton url={url} name={name} />
-                  <SaveAsButton url={url} name={name} />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', maxWidth: 'min(360px, 100%)' }}>
+                  <span style={{ fontSize: 11, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {name}{sizeText === '' ? '' : ` · ${sizeText}`}
+                  </span>
+                  <DownloadButton url={url} name={name} style={{ marginLeft: 'auto', flexShrink: 0 }} />
                 </div>
               </div>
             )
@@ -300,7 +343,7 @@ export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): R
         </div>
       ))}
       {opened === undefined ? null : (
-        <Lightbox url={opened.url} name={opened.name} onClose={() => setOpened(undefined)} />
+        <Lightbox url={opened.url} name={opened.name} size={opened.size} onClose={() => setOpened(undefined)} />
       )}
     </div>
   )

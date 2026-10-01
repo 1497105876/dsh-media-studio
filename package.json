@@ -1,6 +1,6 @@
 {
   "name": "@gw/dsh-media-studio",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "DeepSeek Harness plugin: generate and send images/videos directly in the chat. Agnes / OpenAI-compatible providers, preset models, custom API models, background generation with chat push, inline preview with download / save-as.",
   "keywords": [
     "dsh",
