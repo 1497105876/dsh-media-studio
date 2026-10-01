@@ -7,7 +7,7 @@
       config:
         defaultImageModel: agnes-image
         defaultVideoModel: agnes-video
-        outputDir: media-output
+        outputDir: '~/.dsh/media-studio'
         autoSave: true
         imageResolution: 2K
         imageAspectRatio: '16:9'
