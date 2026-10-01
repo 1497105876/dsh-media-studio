@@ -167,15 +167,25 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // 从 scope 快照同步到本地草稿
-  const reload = useCallback((): boolean => {
+  // 从 scope 快照同步到本地草稿，然后异步补每个条目的 Key 配置状态
+  // （Key 值只写不读，只能问凭据服务"这个凭据名配置过没有"）。
+  const loadAll = useCallback(async (): Promise<void> => {
     const section = sectionOf(scope)
-    if (section === undefined) return false
-    setImageDrafts(entriesOf(section, 'imageModels'))
-    setVideoDrafts(entriesOf(section, 'videoModels'))
+    if (section === undefined) return
+    const img = entriesOf(section, 'imageModels')
+    const vid = entriesOf(section, 'videoModels')
+    setImageDrafts(img)
+    setVideoDrafts(vid)
     setParams({ ...section })
-    return true
-  }, [scope])
+    const names = [...new Set([...img, ...vid].map(d => d.apiKeyEnv.trim()).filter(n => n !== ''))]
+    if (names.length === 0) return
+    const res = await ctx.remote.credentials.describe(names)
+    if (!res.ok || res.value === undefined) return
+    const mark = (list: EntryDraft[]): EntryDraft[] =>
+      list.map(d => ({ ...d, keyConfigured: res.value![d.apiKeyEnv.trim()]?.configured === true }))
+    setImageDrafts(mark)
+    setVideoDrafts(mark)
+  }, [scope, ctx])
 
   useEffect(() => {
     try {
@@ -188,8 +198,8 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
 
   useEffect(() => {
     if (scope === null) return
-    if (!reload()) setError('配置还没就绪，稍后点「重新加载」。')
-  }, [scope, reload])
+    void loadAll()
+  }, [scope, loadAll])
 
   if (error !== '' && scope === null) {
     return <div style={box}><span style={tip(true)}>{error}</span></div>
@@ -216,8 +226,11 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
   // 各条目里填了 Key 草稿的，顺手写进凭据库。
   const save = async (): Promise<void> => {
     if (scope === null) return
+    const seenIds = new Set<string>()
     for (const d of [...imageDrafts, ...videoDrafts]) {
       if (!REF_PATTERN.test(d.id.trim())) { setError(`条目 id「${d.id || '(空)'}」必须是字母/数字/连字符`); return }
+      if (seenIds.has(d.id.trim())) { setError(`条目 id「${d.id}」重复了，改一个不一样的`); return }
+      seenIds.add(d.id.trim())
       if (d.model.trim() === '') { setError(`条目「${d.id}」的模型名不能为空`); return }
       if (d.apiKeyEnv.trim() !== '' && !REF_PATTERN.test(d.apiKeyEnv.trim())) {
         setError(`条目「${d.id}」的凭据名必须是合法环境变量名`); return
@@ -250,7 +263,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
           if (!res.ok) { setError(`「${d.id}」的 Key 写入凭据库失败`); return }
         }
       }
-      reload()
+      await loadAll()
       setMessage('已保存，配置即时生效')
     } finally {
       setBusy(false)
@@ -331,7 +344,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
 
       <div style={row}>
         <button style={btnPrimary} disabled={busy} onClick={() => { void save() }}>{busy ? '保存中…' : '保存配置'}</button>
-        <button style={btn} disabled={busy} onClick={() => { reload(); setMessage('') }}>重新加载</button>
+        <button style={btn} disabled={busy} onClick={() => { void loadAll() }}>重新加载</button>
         <span style={tip(error !== '')}>{error !== '' ? error : message}</span>
       </div>
     </div>
