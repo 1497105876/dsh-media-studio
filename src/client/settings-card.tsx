@@ -34,6 +34,8 @@ const VIDEO_SIZES = ['720P', '1080P', '1K', '2K']
 const VIDEO_RATIOS = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']
 const VIDEO_SECONDS = ['4', '5', '6', '8', '10', '12']
 
+const PROVIDER_ADAPTERS = ['agnes', 'openai', 'openai-videos']
+
 // ---------- 服务商预设 ----------
 
 type MediaKind = 'image' | 'video'
@@ -41,7 +43,10 @@ type MediaKind = 'image' | 'video'
 /** 一个服务商预设：下拉选中后自动填充整条目，只有 Key 要自己填。 */
 interface ProviderPreset {
   key: string
+  /** 下拉里显示的名字（可以带说明）。 */
   label: string
+  /** 建议的条目显示名（干净版，不带说明括号）。 */
+  labelFor: (kind: MediaKind) => string
   provider: 'agnes' | 'openai' | 'openai-videos'
   baseURL: string
   modelFor: (kind: MediaKind) => string
@@ -52,44 +57,46 @@ interface ProviderPreset {
 /** 内置服务商预设（与 README「模型配置」表一致）；custom 只是占位，全手填。 */
 const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   {
-    key: 'agnes', label: 'Agnes（免费额度）', provider: 'agnes',
+    key: 'agnes', label: 'Agnes（免费额度）',
+    labelFor: kind => kind === 'image' ? 'Agnes 生图' : 'Agnes 生视频',
+    provider: 'agnes',
     baseURL: 'https://apihub.agnes-ai.com/v1',
     modelFor: kind => kind === 'image' ? 'agnes-image-2.5-flash' : 'agnes-video-2.5-flash',
     suggestedIdFor: kind => kind === 'image' ? 'agnes-image' : 'agnes-video',
     kinds: ['image', 'video'],
   },
   {
-    key: 'openai-image', label: 'OpenAI 生图', provider: 'openai',
+    key: 'openai-image', label: 'OpenAI 生图', labelFor: () => 'OpenAI 生图', provider: 'openai',
     baseURL: 'https://api.openai.com/v1',
     modelFor: () => 'gpt-image-1', suggestedIdFor: () => 'openai-image',
     kinds: ['image'],
   },
   {
-    key: 'openai-video', label: 'OpenAI Sora 2', provider: 'openai-videos',
+    key: 'openai-video', label: 'OpenAI Sora 2', labelFor: () => 'OpenAI Sora 2', provider: 'openai-videos',
     baseURL: 'https://api.openai.com/v1',
     modelFor: () => 'sora-2', suggestedIdFor: () => 'openai-sora2',
     kinds: ['video'],
   },
   {
-    key: 'gemini', label: 'Gemini 生图', provider: 'openai',
+    key: 'gemini', label: 'Gemini 生图', labelFor: () => 'Gemini 生图', provider: 'openai',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     modelFor: () => 'gemini-2.5-flash-image', suggestedIdFor: () => 'gemini-image',
     kinds: ['image'],
   },
   {
-    key: 'siliconflow', label: '硅基流动', provider: 'openai',
+    key: 'siliconflow', label: '硅基流动', labelFor: () => '硅基流动', provider: 'openai',
     baseURL: 'https://api.siliconflow.cn/v1',
     modelFor: () => 'Kwai-Kolors/Kolors', suggestedIdFor: () => 'siliconflow-image',
     kinds: ['image'],
   },
   {
-    key: 'dashscope', label: '阿里云百炼', provider: 'openai',
+    key: 'dashscope', label: '阿里云百炼', labelFor: () => '阿里云百炼', provider: 'openai',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     modelFor: () => 'wanx2.1-t2i-turbo', suggestedIdFor: () => 'dashscope-image',
     kinds: ['image'],
   },
   {
-    key: 'custom', label: '自定义（手填）', provider: 'openai', baseURL: '',
+    key: 'custom', label: '自定义（手填）', labelFor: () => '', provider: 'openai', baseURL: '',
     modelFor: () => '', suggestedIdFor: () => '', kinds: ['image', 'video'],
   },
 ]
@@ -136,7 +143,6 @@ interface EntryDraft {
   baseURL: string
   apiKeyEnv: string
   keyDraft: string
-  keyConfigured: boolean
 }
 
 let draftUidSeq = 0
@@ -195,6 +201,11 @@ function deriveRef(id: string): string {
   return `MEDIA_STUDIO_${id.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`
 }
 
+/** 凭据库只写不读；确认弹窗在个别嵌入环境可能被禁，禁了就当作确认。 */
+function safeConfirm(message: string): boolean {
+  try { return window.confirm(message) } catch { return true }
+}
+
 // ---------- 通用小组件 ----------
 
 function sectionOf(scope: any): Record<string, unknown> | undefined {
@@ -218,7 +229,6 @@ function entriesOf(section: Record<string, unknown> | undefined, key: 'imageMode
       baseURL,
       apiKeyEnv: String(raw?.apiKeyEnv ?? ''),
       keyDraft: '',
-      keyConfigured: false,
     }
   })
 }
@@ -294,12 +304,19 @@ function ComboBox(props: { value: string, options: readonly string[], onChange: 
 function EntryCard(props: {
   entry: EntryDraft
   kind: MediaKind
+  /** 凭据名 → 是否已在凭据库配置过 Key（loadAll 异步查询的结果）。 */
+  keyStatus: Record<string, boolean>
   onChange: (patch: Partial<EntryDraft>) => void
   /** 选了服务商预设：整条目自动填充（provider/baseURL/model/label/id）。 */
   onProviderChange: (presetKey: string) => void
   onRemove: () => void
 }) {
   const e = props.entry
+  const configured = props.keyStatus[e.apiKeyEnv.trim()] === true
+  const keyFilled = e.keyDraft.trim() !== ''
+  const refName = e.apiKeyEnv.trim() !== ''
+    ? e.apiKeyEnv.trim()
+    : e.id.trim() !== '' ? deriveRef(e.id) : '保存时按 id 自动派生'
   return (
     <div style={entryBox}>
       <Line>
@@ -307,8 +324,15 @@ function EntryCard(props: {
           <ProviderSelect kind={props.kind} value={e.providerKey} onChange={v => props.onProviderChange(v)} />
         </Slot>
       </Line>
+      {e.providerKey === 'custom' ? (
+        <Line>
+          <Slot label="适配器" title="接口协议：agnes=Agnes 专有；openai=OpenAI 兼容图片接口；openai-videos=OpenAI 风格异步视频接口" flex="1 1 260px">
+            <Select value={e.provider} options={PROVIDER_ADAPTERS} onChange={v => props.onChange({ provider: v })} />
+          </Slot>
+        </Line>
+      ) : null}
       <Line>
-        <Slot label="id" title="对话 / 工具里引用的名字，如 agnes-image；字母或下划线开头，可含连字符" flex="1 1 180px">
+        <Slot label="id" title="对话 / 工具里引用的名字，如 agnes-image；字母或下划线开头，可含连字符。注意：凭据按 id 派生存储，改 id 后可能需要重新填 API Key" flex="1 1 180px">
           <input style={input} value={e.id} onChange={ev => props.onChange({ id: ev.target.value })} />
         </Slot>
         <Slot label="显示名" title="可选，推送消息里展示" flex="1 1 180px">
@@ -328,11 +352,11 @@ function EntryCard(props: {
       <SettingsSecretField
         id={`media-studio-key-${e.draftUid}`}
         label="API Key"
-        hint="保存在 dsh 凭据库里（只写不读）；也可以改用系统环境变量"
+        hint={`写入凭据库「${refName}」（只写不读）；也可以改用系统环境变量`}
         text={e.keyDraft}
         disabled={false}
-        configured={e.keyConfigured}
-        stateLabel={e.keyConfigured ? '已配置' : '未配置'}
+        configured={configured || keyFilled}
+        stateLabel={keyFilled ? '已输入，保存后生效' : configured ? '已配置' : '未配置'}
         onEdit={text => props.onChange({ keyDraft: text })}
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -350,28 +374,36 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
   const [imageDrafts, setImageDrafts] = useState<EntryDraft[]>([])
   const [videoDrafts, setVideoDrafts] = useState<EntryDraft[]>([])
   const [params, setParams] = useState<Record<string, unknown>>({})
+  /** 凭据名 → 是否已配置。独立于条目草稿：异步查询回来不会覆盖用户正在编辑的内容。 */
+  const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({})
+  /** 上次加载/保存时的快照，用于「有未保存修改」的检测。 */
+  const [baseline, setBaseline] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // 从 scope 快照同步到本地草稿，然后异步补每个条目的 Key 配置状态
-  // （Key 值只写不读，只能问凭据服务"这个凭据名配置过没有"）。
-  const loadAll = useCallback(async (): Promise<void> => {
+  // 从 scope 快照同步到本地草稿；Key 配置状态单独异步查，不回写条目列表。
+  // 返回最新的凭据状态，保存流程用它拼「缺 Key」提醒。
+  const loadAll = useCallback(async (): Promise<Record<string, boolean>> => {
     const section = sectionOf(scope)
-    if (section === undefined) return
+    if (section === undefined) return {}
     const img = entriesOf(section, 'imageModels', 'image')
     const vid = entriesOf(section, 'videoModels', 'video')
     setImageDrafts(img)
     setVideoDrafts(vid)
     setParams({ ...section })
+    setBaseline(JSON.stringify({ img, vid, params: { ...section } }))
     const names = [...new Set([...img, ...vid].map(d => d.apiKeyEnv.trim()).filter(n => n !== ''))]
-    if (names.length === 0) return
+    if (names.length === 0) { setKeyStatus({}); return {} }
     const res = await ctx.remote.credentials.describe(names)
-    if (!res.ok || res.value === undefined) return
-    const mark = (list: EntryDraft[]): EntryDraft[] =>
-      list.map(d => ({ ...d, keyConfigured: res.value![d.apiKeyEnv.trim()]?.configured === true }))
-    setImageDrafts(mark)
-    setVideoDrafts(mark)
+    // describe 返回的是「凭据名 → { configured }」，压平成「凭据名 → 是否已配置」
+    const raw = res.ok && res.value !== undefined
+      ? res.value as Record<string, { configured?: boolean }>
+      : {}
+    const status: Record<string, boolean> = {}
+    for (const [name, info] of Object.entries(raw)) status[name] = info?.configured === true
+    setKeyStatus(status)
+    return status
   }, [scope, ctx])
 
   useEffect(() => {
@@ -392,19 +424,32 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     return <div style={box}><span style={tip(true)}>{error}</span></div>
   }
 
+  const isDirty = (): boolean => {
+    if (baseline === '') return false
+    return JSON.stringify({ img: imageDrafts, vid: videoDrafts, params }) !== baseline
+  }
+
   const changeEntry = (kind: MediaKind, index: number, patch: Partial<EntryDraft>): void => {
     const setter = kind === 'image' ? setImageDrafts : setVideoDrafts
     setter(prev => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))
   }
   const removeEntry = (kind: MediaKind, index: number): void => {
+    const list = kind === 'image' ? imageDrafts : videoDrafts
+    const removed = list[index]
     const setter = kind === 'image' ? setImageDrafts : setVideoDrafts
     setter(prev => prev.filter((_, i) => i !== index))
+    // 默认模型指向被删条目时，自动改指剩下的第一个，避免生成时报 unknown model
+    if (removed === undefined) return
+    const defKey = kind === 'image' ? 'defaultImageModel' : 'defaultVideoModel'
+    if (String(params[defKey] ?? '') === removed.id.trim()) {
+      setParam(defKey, list.filter((_, i) => i !== index)[0]?.id ?? '')
+    }
   }
   const addEntry = (kind: MediaKind): void => {
     const fresh: EntryDraft = {
       draftUid: newDraftUid(),
       id: '', label: '', providerKey: '', provider: kind === 'image' ? 'openai' : 'openai-videos',
-      model: '', baseURL: '', apiKeyEnv: '', keyDraft: '', keyConfigured: false,
+      model: '', baseURL: '', apiKeyEnv: '', keyDraft: '',
     }
     const setter = kind === 'image' ? setImageDrafts : setVideoDrafts
     setter(prev => [...prev, fresh])
@@ -424,7 +469,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
         baseURL: preset.baseURL,
         model: preset.modelFor(kind),
       }
-      if (d.label.trim() === '') patch.label = preset.label
+      if (d.label.trim() === '') patch.label = preset.labelFor(kind)
       if (d.id.trim() === '') {
         const taken = new Set([...prev].map(x => x.id.trim()))
         patch.id = uniqueSuggestedId(preset.suggestedIdFor(kind), taken)
@@ -441,12 +486,23 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     if (Number.isFinite(n) && n >= min) setParam(key, n)
   }
 
+  const reload = (): void => {
+    if (isDirty() && !safeConfirm('有未保存的修改，重新加载会丢弃这些修改，确定吗？')) return
+    void loadAll()
+  }
+
   // 保存：参数和条目走 scope.apply 的 path 寻址一次写入；
   // 各条目里填了 Key 草稿的，顺手写进凭据库。
   const save = async (): Promise<void> => {
     if (scope === null) return
     const seenIds = new Set<string>()
     for (const d of [...imageDrafts, ...videoDrafts]) {
+      if (d.providerKey === '' && d.id.trim() === '' && d.model.trim() === '' && d.baseURL.trim() === '') {
+        setError('还有没配置的空条目——选中服务商即可自动填好，不需要的条目请删除'); return
+      }
+      if (d.providerKey === '' && d.model.trim() === '' && d.baseURL.trim() === '') {
+        setError(`条目「${d.id}」还没选服务商——选中会自动填好地址和模型名，或选「自定义」手填`); return
+      }
       if (!ID_PATTERN.test(d.id.trim())) {
         setError(`条目 id「${d.id || '(空)'}」要以字母或下划线开头，只能含字母、数字、下划线、连字符`); return
       }
@@ -472,12 +528,23 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       setImageDrafts(imageDraftsFilled)
       setVideoDrafts(videoDraftsFilled)
 
+      // 默认模型指向不存在的条目时（比如刚被删了），自动改指第一个，避免生成报错
+      const paramsToWrite: Record<string, unknown> = { ...params }
+      const imageIds = imageDraftsFilled.map(d => d.id.trim())
+      const videoIds = videoDraftsFilled.map(d => d.id.trim())
+      if (imageIds.length > 0 && !imageIds.includes(String(params.defaultImageModel ?? '').trim())) {
+        paramsToWrite.defaultImageModel = imageIds[0]
+      }
+      if (videoIds.length > 0 && !videoIds.includes(String(params.defaultVideoModel ?? '').trim())) {
+        paramsToWrite.defaultVideoModel = videoIds[0]
+      }
+
       const snap = scope.getSnapshot()
-      const strip = ({ draftUid: _u, keyDraft: _k, keyConfigured: _c, providerKey: _p, ...rest }: EntryDraft) => rest
+      const strip = ({ draftUid: _u, keyDraft: _k, providerKey: _p, ...rest }: EntryDraft) => rest
       const ops = [
         { op: 'set', path: ['imageModels'], value: imageDraftsFilled.map(strip) },
         { op: 'set', path: ['videoModels'], value: videoDraftsFilled.map(strip) },
-        ...Object.entries(params)
+        ...Object.entries(paramsToWrite)
           .filter(([k]) => !MODEL_KEYS.has(k))
           .map(([k, v]) => ({ op: 'set', path: [k], value: v })),
       ]
@@ -490,19 +557,30 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
           if (!res.ok) { setError(`「${d.id}」的 Key 写入凭据库失败`); return }
         }
       }
-      await loadAll()
-      setMessage('已保存，配置即时生效')
+      const status = await loadAll()
+      // 保存后盘点缺 Key 的条目，提前提醒（用户也可能用系统环境变量，所以只提醒不阻断）
+      const missing = [...imageDraftsFilled, ...videoDraftsFilled]
+        .filter(d => d.keyDraft.trim() === '' && status[d.apiKeyEnv.trim()] !== true)
+        .map(d => d.id)
+      setMessage(missing.length > 0
+        ? `已保存。提醒：${missing.join('、')} 还没配置 API Key（也没检测到已配置过），生成时会失败`
+        : '已保存，配置即时生效')
     } finally {
       setBusy(false)
     }
   }
 
+  const dirty = isDirty()
+
   return (
     <div style={box}>
       <Section title="图片模型" badge={`${imageDrafts.length} 个`}
         desc="选服务商自动填好地址和模型，填上 API Key 就能用；对话和工具按 id 引用条目。">
+        {imageDrafts.length === 0
+          ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
+          : null}
         {imageDrafts.map((d, i) => (
-          <EntryCard key={d.draftUid} entry={d} kind="image"
+          <EntryCard key={d.draftUid} entry={d} kind="image" keyStatus={keyStatus}
             onChange={patch => changeEntry('image', i, patch)}
             onProviderChange={key => applyPreset('image', i, key)}
             onRemove={() => removeEntry('image', i)} />
@@ -512,8 +590,11 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
 
       <Section title="视频模型" badge={`${videoDrafts.length} 个`}
         desc="同上；视频任务默认后台生成，完成后推送进会话。">
+        {videoDrafts.length === 0
+          ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
+          : null}
         {videoDrafts.map((d, i) => (
-          <EntryCard key={d.draftUid} entry={d} kind="video"
+          <EntryCard key={d.draftUid} entry={d} kind="video" keyStatus={keyStatus}
             onChange={patch => changeEntry('video', i, patch)}
             onProviderChange={key => applyPreset('video', i, key)}
             onRemove={() => removeEntry('video', i)} />
@@ -598,8 +679,10 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       </Section>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button style={btnPrimary} disabled={busy} onClick={() => { void save() }}>{busy ? '保存中…' : '保存配置'}</button>
-        <button style={btn} disabled={busy} onClick={() => { void loadAll() }}>重新加载</button>
+        <button style={btnPrimary} disabled={busy} onClick={() => { void save() }}>
+          {busy ? '保存中…' : dirty ? '保存配置 *' : '保存配置'}
+        </button>
+        <button style={btn} disabled={busy} onClick={() => reload()}>重新加载</button>
         <span style={tip(error !== '')}>{error !== '' ? error : message}</span>
       </div>
     </div>
