@@ -1,5 +1,5 @@
 /**
- * Browser half of dsh-media-studio (client plugin, see
+ * Browser half of @gw/dsh-media-studio (client plugin, see
  * packages/client/ui-attachment/src/client/index.ts for the registration
  * pattern). Bundled into the lazy-CJS client artifact by scripts/build-client.mjs.
  *
@@ -9,7 +9,9 @@
  *  - `conversation.chat.commandview` rows for `/image` `/video` (rich rows for
  *    `--wait` results);
  *  - a `conversation.message.images` fill that adds download + save-as to the
- *    regular chat image gallery.
+ *    regular chat image gallery;
+ *  - a `settings.plugins.tab` card (Settings → Plugins → 媒体生成) for
+ *    credentials and volatile config editing over the official remote seams.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -18,12 +20,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import { MediaCommandRow } from './command-row.tsx'
 import { MessageMediaImages } from './gallery.tsx'
+import { registerSettingsTab } from './settings-card.tsx'
 import { MediaToolRow } from './tool-row.tsx'
 
-/** Slot registry required by this presentation plugin. */
-export const inject = ['slots']
+/** Slot registry + remote seams required by this presentation plugin. */
+export const inject = ['slots', 'remote', 'remote.credentials']
 
-/** Register the media tool rows, command rows, and the message gallery fill. */
+/** Register the media tool rows, command rows, message gallery fill, and the settings tab. */
 export function apply(ctx: Context): void {
   for (const key of ['generate_image', 'generate_video', 'send_media']) {
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
@@ -38,4 +41,6 @@ export function apply(ctx: Context): void {
   // entry loses the priority election.
   ctx.slots.inject('conversation.message.images', () => ctx.slots.register(
     { name: 'conversation.message.images', priority: -1 }, MessageMediaImages))
+
+  registerSettingsTab(ctx as unknown as import('./settings-card.tsx').SlotsContextLike)
 }
