@@ -123,14 +123,16 @@ interface ImageResultCandidates {
   url?: string
 }
 
-/** Extract `b64_json` / `url` from OpenAI-style, Agnes, and SiliconFlow-style responses. */
+/** Extract `b64_json` / `url` from OpenAI-style, Agnes, and SiliconFlow-style responses.
+ *  Agnes 在 response_format:'url' 时会带占位的空字符串 b64_json:""，
+ *  所以 b64 分支必须判非空，否则会拿空串去解码，最后报 "Image is empty."。 */
 function extractImageResult(body: unknown): ImageResultCandidates {
   const root = body as Record<string, unknown>
   const pick = (row: unknown): ImageResultCandidates | undefined => {
     const item = row as Record<string, unknown>
-    if (typeof item?.b64_json === 'string') return { b64: item.b64_json }
-    if (typeof item?.url === 'string') return { url: item.url }
-    if (typeof item?.image_url === 'string') return { url: item.image_url }
+    if (typeof item?.b64_json === 'string' && item.b64_json.length > 0) return { b64: item.b64_json }
+    if (typeof item?.url === 'string' && item.url.length > 0) return { url: item.url }
+    if (typeof item?.image_url === 'string' && item.image_url.length > 0) return { url: item.image_url }
     return undefined
   }
   const data = Array.isArray(root?.data) ? (root.data as unknown[]) : undefined
@@ -332,7 +334,7 @@ async function agnesVideo(
     }, signal) as Record<string, unknown>
     const state = typeof status.status === 'string' ? status.status : ''
     if (state === 'completed') {
-      const url = typeof status.url === 'string' ? status.url : undefined
+      const url = typeof status.url === 'string' && status.url.length > 0 ? status.url : undefined
       if (url === undefined) throw new Error(`video task completed without a url: ${JSON.stringify(status).slice(0, 500)}`)
       const downloaded = await fetchBytes(url, signal, entry.model)
       return { bytes: downloaded.bytes, mediaType: 'video/mp4' }
@@ -375,7 +377,7 @@ async function openAiVideo(
     }, signal) as Record<string, unknown>
     const state = typeof status.status === 'string' ? status.status : ''
     if (state === 'completed') {
-      const url = typeof status.url === 'string' ? status.url : undefined
+      const url = typeof status.url === 'string' && status.url.length > 0 ? status.url : undefined
       const downloaded = url !== undefined
         ? await fetchBytes(url, signal, entry.model)
         : await fetchBytes(`${entry.baseURL}/videos/${encodeURIComponent(id)}/content`, signal, entry.model)
