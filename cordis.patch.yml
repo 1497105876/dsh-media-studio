@@ -1,0 +1,16 @@
+# dsh-media-studio — DSH media generation bundle
+# 挂载插件行：所有配置项的默认值由插件 Config schema 提供（见 README）。
+# 想覆盖默认值时在 config: 下按整行替换（patch 语义是整值替换，不做深合并）。
+- insert:
+    - id: media-studio
+      name: dsh-media-studio
+      config:
+        defaultImageModel: agnes-image
+        defaultVideoModel: agnes-video
+        outputDir: media-output
+        autoSave: true
+        imageResolution: 2K
+        imageAspectRatio: '16:9'
+        videoSeconds: 5
+        videoSize: 720P
+        videoAspectRatio: '16:9'
