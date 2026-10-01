@@ -1,8 +1,7 @@
 # dependencies
 node_modules/
 
-# build output (tsc + esbuild 产物，npm install 的 prepare 钩子会重建)
-lib/
+# build info（lib/ 已入库：GitHub 直装不再依赖 prepare 钩子）
 *.tsbuildinfo
 
 # logs

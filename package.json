@@ -54,8 +54,7 @@
     "build": "npm run build:host && npm run build:client",
     "build:host": "tsc -p tsconfig.json",
     "build:client": "node scripts/build-client.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "prepare": "npm run build"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.4"
