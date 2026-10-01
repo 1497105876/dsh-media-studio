@@ -43,5 +43,5 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('conversation.message.images', () => ctx.slots.register(
     { name: 'conversation.message.images', priority: -1 }, MessageMediaImages))
 
-  registerCredentialCard(ctx as unknown as import('./settings-card.tsx').SlotsContextLike)
+  registerCredentialCard(ctx)
 }
