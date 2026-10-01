@@ -1,24 +1,25 @@
 /**
  * 插件的设置卡片 —— 挂在插件详情页（plugins.bundle.config，key = 包名）。
  *
- * 从常用到低频分三块：
- *  - 图片模型 / 视频模型：条目增删改。服务商下拉内置常见服务商（Agnes、
+ * 样式与保存通道全部对齐官方设置页（照 @gw/dsh-mimotts 的官方模式）：
+ *  - 卡片壳是官方 <SettingsForm>（保存按钮 / 只读提示 / 失败提示 / 卸载丢弃）；
+ *  - 文本与数字字段用官方 <SettingsValueField>，Key 用官方 <SettingsSecretField>；
+ *  - 保存走 scope.mutate(ops, revision)——这是 host 认的唯一写通道，
+ *    之前手写的 scope.apply 不存在，是「点了保存没反应」的根因。
+ *
+ * 功能结构（自绘部分）：
+ *  - 图片模型 / 视频模型：条目增删改，服务商下拉内置常见服务商（Agnes、
  *    OpenAI 生图 / Sora 2、Gemini、硅基流动、阿里云百炼、自定义），选中自动
- *    填好接口地址和参考模型名；API Key 在条目里填，保存时走官方凭据通道
- *    （remote.credentials）写进 dsh 凭据库（只写不读）；
+ *    填好接口地址和参考模型名；API Key 保存时走 remote.credentials 写凭据库；
  *  - 默认参数：默认模型、输出目录、图片/视频的分辨率画幅时长——这些只是
  *    默认值，对话里明确指定了参数时以对话指定的为准；
- *  - 高级：超时与轮询节奏，默认折叠，一般不用动。
+ *  - 高级：超时与轮询节奏。
  *
- * 布局是一行一行的表单（label 左、控件右），信息密度优先。
- *
- * 读写数据源是 configForms.get(ns) 的 scope（host 为本 entry 服务的配置投影，
- * ns = cordis.patch.yml 的 insert id）。保存用 scope.apply 的 path 寻址一次
- * 写入，revision 冲突时提示并重读。
+ * 四个分区默认全部折叠，点标题展开。
  */
 import { createElement, useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { SettingsSecretField } from '@deepseek-ai/dsh-client-ui-primitives'
+import { SettingsForm, SettingsSecretField, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 
 const NS = 'media-studio'
 const PACKAGE_KEY = '@gw/dsh-media-studio'
@@ -151,9 +152,9 @@ function newDraftUid(): string {
   return `draft-${Date.now().toString(36)}-${draftUidSeq}`
 }
 
-// ---------- 样式（行式布局） ----------
+// ---------- 样式（官方字段组件之外的自绘部分） ----------
 
-const box: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 14 }
+const box: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12 }
 const section: CSSProperties = {
   border: '1px solid rgba(128,128,128,0.25)', borderRadius: 10,
   padding: '2px 14px 12px',
@@ -166,33 +167,28 @@ const badge: CSSProperties = {
   fontSize: 10, fontWeight: 500, opacity: 0.65,
   border: '1px solid rgba(128,128,128,0.4)', borderRadius: 999, padding: '1px 8px',
 }
-const body: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 }
+const body: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 2 }
 const sectionDesc: CSSProperties = { fontSize: 11, opacity: 0.55, lineHeight: 1.6 }
 const entryBox: CSSProperties = {
   border: '1px solid rgba(128,128,128,0.22)', borderRadius: 8,
-  background: 'rgba(128,128,128,0.06)', padding: '8px 12px',
-  display: 'flex', flexDirection: 'column', gap: 6,
-}
-/** 一行：label 左、控件右。 */
-const line: CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }
-const rowLabel: CSSProperties = { fontSize: 11, opacity: 0.7, flexShrink: 0, minWidth: 66, textAlign: 'right' }
-const rowHead: CSSProperties = { ...rowLabel, fontWeight: 600, opacity: 0.6 }
-const input: CSSProperties = {
-  border: '1px solid rgba(128,128,128,0.4)', borderRadius: 6,
-  padding: '4px 8px', fontSize: 12, background: 'transparent', color: 'inherit',
-  width: '100%', boxSizing: 'border-box',
+  background: 'rgba(128,128,128,0.06)', padding: '10px 12px',
+  display: 'flex', flexDirection: 'column', gap: 10,
 }
 const btn: CSSProperties = {
   border: '1px solid rgba(128,128,128,0.45)', borderRadius: 6, padding: '4px 12px',
   fontSize: 12, cursor: 'pointer', background: 'transparent', color: 'inherit',
 }
-const btnGhost: CSSProperties = {
-  border: 'none', background: 'transparent', color: 'inherit', opacity: 0.6,
-  fontSize: 12, cursor: 'pointer', padding: '2px 6px',
+/** 与官方 SettingsValueField 同构的选择行：label 上、控件下、hint 再下。 */
+const fieldBox: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 }
+const fieldLabel: CSSProperties = { fontSize: 12, opacity: 0.8 }
+const fieldHint: CSSProperties = { fontSize: 11, opacity: 0.5, lineHeight: 1.5 }
+const input: CSSProperties = {
+  border: '1px solid rgba(128,128,128,0.4)', borderRadius: 6,
+  padding: '5px 8px', fontSize: 12, background: 'transparent', color: 'inherit',
+  width: '100%', boxSizing: 'border-box',
 }
-const btnPrimary: CSSProperties = { ...btn, fontWeight: 600 }
 const tip = (bad: boolean): CSSProperties => ({
-  fontSize: 12, minHeight: 14, color: bad ? 'rgb(255,105,97)' : 'rgb(52,199,89)',
+  fontSize: 12, color: bad ? 'rgb(255,105,97)' : 'rgb(52,199,89)', lineHeight: 1.5,
 })
 
 // 凭据名不需要用户起：由条目 id 自动派生（MEDIA_STUDIO_<ID>），
@@ -206,7 +202,7 @@ function safeConfirm(message: string): boolean {
   try { return window.confirm(message) } catch { return true }
 }
 
-// ---------- 通用小组件 ----------
+// ---------- 自绘小组件 ----------
 
 function sectionOf(scope: any): Record<string, unknown> | undefined {
   const snap = scope?.getSnapshot?.()
@@ -233,10 +229,10 @@ function entriesOf(section: Record<string, unknown> | undefined, key: 'imageMode
   })
 }
 
-/** 一个分区：可折叠（details/summary 原生行为），标题 + 计数徽标 + 说明 + 内容。 */
-function Section(props: { title: string, badge?: string, desc?: string, defaultOpen?: boolean, children: any }): JSX.Element {
+/** 一个分区：默认折叠，点标题展开；标题 + 计数徽标 + 说明 + 内容。 */
+function Section(props: { title: string, badge?: string, desc?: string, children: any }): JSX.Element {
   return (
-    <details open={props.defaultOpen !== false} style={section}>
+    <details style={section}>
       <summary style={summary}>
         {props.title}
         {props.badge === undefined ? null : <span style={badge}>{props.badge}</span>}
@@ -249,40 +245,57 @@ function Section(props: { title: string, badge?: string, desc?: string, defaultO
   )
 }
 
-/** 行内一组：小标签 + 控件（控件撑满剩余宽度）。hint 走 title 悬停提示。 */
-function Slot(props: { label: string, title?: string, flex?: string, children: any }): JSX.Element {
+/** 与官方字段行同构的选择框行（SettingsValueField 是文本框，select 需要自绘）。
+ *  optionLabels 可选：给部分 value 配中文显示名（如 yes/no → 开启/关闭）。 */
+function SelectRow(props: {
+  id: string, label: string, hint?: string, value: string,
+  options: readonly string[], optionLabels?: Record<string, string>,
+  disabled?: boolean, onChange: (v: string) => void,
+}): JSX.Element {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: props.flex ?? '1 1 140px', minWidth: 0 }} title={props.title}>
-      <span style={rowLabel}>{props.label}</span>
-      <span style={{ flex: 1, minWidth: 0, display: 'flex' }}>{props.children}</span>
-    </label>
-  )
-}
-
-function Line(props: { children: any }): JSX.Element {
-  return <div style={line}>{props.children}</div>
-}
-
-function Select(props: { value: string, options: readonly string[], onChange: (v: string) => void }): JSX.Element {
-  return (
-    <select style={input} value={props.value} onChange={e => props.onChange(e.target.value)}>
-      {props.options.includes(props.value) ? null : <option value={props.value}>{props.value}</option>}
-      {props.options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div style={fieldBox}>
+      <label style={fieldLabel} htmlFor={props.id}>{props.label}</label>
+      <select id={props.id} style={input} value={props.value} disabled={props.disabled}
+        onChange={e => props.onChange(e.target.value)}>
+        {props.options.includes(props.value) ? null : <option value={props.value}>{props.value}</option>}
+        {props.options.map(o => <option key={o} value={o}>{props.optionLabels?.[o] ?? o}</option>)}
+      </select>
+      {props.hint === undefined ? null : <span style={fieldHint}>{props.hint}</span>}
+    </div>
   )
 }
 
 /** 服务商下拉：按图片/视频组过滤预设；未选时显示占位提示。 */
-function ProviderSelect(props: { kind: MediaKind, value: string, onChange: (v: string) => void }): JSX.Element {
+function ProviderSelect(props: { kind: MediaKind, value: string, disabled?: boolean, onChange: (v: string) => void }): JSX.Element {
   const options = PROVIDER_PRESETS.filter(p => p.kinds.includes(props.kind))
   const known = options.some(p => p.key === props.value)
   return (
-    <select style={input} value={props.value}
+    <select style={input} value={props.value} disabled={props.disabled}
       onChange={e => { if (e.target.value !== '') props.onChange(e.target.value) }}>
       {props.value === '' ? <option value="" disabled>选择服务商，自动填好地址和模型</option> : null}
       {!known && props.value !== '' ? <option value={props.value}>{props.value}</option> : null}
       {options.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
     </select>
+  )
+}
+
+/** 官方 SettingsValueField 的本地包装：本卡片不做「覆盖/重置」语义，
+ *  恒定非覆盖、非无效，徽标与重置按钮自然不渲染。 */
+function ValueField(props: {
+  id: string, label: string, hint?: string, text: string, numeric?: boolean,
+  placeholder?: string, disabled?: boolean, onEdit: (text: string) => void,
+}): JSX.Element {
+  return (
+    <SettingsValueField
+      id={props.id} label={props.label} text={props.text}
+      {...(props.hint === undefined ? {} : { hint: props.hint })}
+      {...(props.placeholder === undefined ? {} : { placeholder: props.placeholder })}
+      numeric={props.numeric === true}
+      disabled={props.disabled === true}
+      onEdit={props.onEdit}
+      overridden={false} invalid={false}
+      overriddenLabel="" resetLabel="" invalidLabel=""
+      onReset={() => {}} />
   )
 }
 
@@ -293,12 +306,14 @@ function EntryCard(props: {
   kind: MediaKind
   /** 凭据名 → 是否已在凭据库配置过 Key（loadAll 异步查询的结果）。 */
   keyStatus: Record<string, boolean>
+  disabled: boolean
   onChange: (patch: Partial<EntryDraft>) => void
   /** 选了服务商预设：整条目自动填充（provider/baseURL/model/label/id）。 */
   onProviderChange: (presetKey: string) => void
   onRemove: () => void
 }) {
   const e = props.entry
+  const uid = e.draftUid
   const configured = props.keyStatus[e.apiKeyEnv.trim()] === true
   const keyFilled = e.keyDraft.trim() !== ''
   const refName = e.apiKeyEnv.trim() !== ''
@@ -306,48 +321,46 @@ function EntryCard(props: {
     : e.id.trim() !== '' ? deriveRef(e.id) : '保存时按 id 自动派生'
   return (
     <div style={entryBox}>
-      <Line>
-        <Slot label="服务商" title="选中即自动填充接口地址和参考模型名，只需再填 API Key；下拉没有的服务商选「自定义」手填" flex="1 1 260px">
-          <ProviderSelect kind={props.kind} value={e.providerKey} onChange={v => props.onProviderChange(v)} />
-        </Slot>
-      </Line>
+      <div style={fieldBox}>
+        <label style={fieldLabel} htmlFor={`ms-${uid}-provider`}>服务商</label>
+        <ProviderSelect kind={props.kind} value={e.providerKey} disabled={props.disabled}
+          onChange={v => props.onProviderChange(v)} />
+        <span style={fieldHint}>选中即自动填充接口地址和参考模型名；下拉没有的服务商选「自定义」手填</span>
+      </div>
       {e.providerKey === 'custom' ? (
-        <Line>
-          <Slot label="适配器" title="接口协议：agnes=Agnes 专有；openai=OpenAI 兼容图片接口；openai-videos=OpenAI 风格异步视频接口" flex="1 1 260px">
-            <Select value={e.provider} options={PROVIDER_ADAPTERS} onChange={v => props.onChange({ provider: v })} />
-          </Slot>
-        </Line>
+        <SelectRow id={`ms-${uid}-adapter`} label="适配器"
+          hint="接口协议：agnes=Agnes 专有；openai=OpenAI 兼容图片接口；openai-videos=OpenAI 风格异步视频接口"
+          value={e.provider} options={PROVIDER_ADAPTERS} disabled={props.disabled}
+          onChange={v => props.onChange({ provider: v })} />
       ) : null}
-      <Line>
-        <Slot label="id" title="对话 / 工具里引用的名字，如 agnes-image；字母或下划线开头，可含连字符。注意：凭据按 id 派生存储，改 id 后可能需要重新填 API Key" flex="1 1 180px">
-          <input style={input} value={e.id} onChange={ev => props.onChange({ id: ev.target.value })} />
-        </Slot>
-        <Slot label="显示名" title="可选，推送消息里展示" flex="1 1 180px">
-          <input style={input} value={e.label} onChange={ev => props.onChange({ label: ev.target.value })} />
-        </Slot>
-      </Line>
-      <Line>
-        <Slot label="模型名">
-          <input style={input} value={e.model} onChange={ev => props.onChange({ model: ev.target.value })} />
-        </Slot>
-      </Line>
-      <Line>
-        <Slot label="接口地址" title="OpenAI 兼容的 Base URL，一般以 /v1 结尾">
-          <input style={input} value={e.baseURL} onChange={ev => props.onChange({ baseURL: ev.target.value })} />
-        </Slot>
-      </Line>
+      <ValueField id={`ms-${uid}-id`} label="id"
+        hint="对话 / 工具里引用的名字；凭据按 id 派生，改 id 后可能需要重新填 API Key"
+        text={e.id} disabled={props.disabled}
+        onEdit={text => props.onChange({ id: text })} />
+      <ValueField id={`ms-${uid}-label`} label="显示名"
+        hint="可选，推送消息里展示"
+        text={e.label} disabled={props.disabled}
+        onEdit={text => props.onChange({ label: text })} />
+      <ValueField id={`ms-${uid}-model`} label="模型名"
+        text={e.model} disabled={props.disabled}
+        onEdit={text => props.onChange({ model: text })} />
+      <ValueField id={`ms-${uid}-baseurl`} label="接口地址（Base URL）"
+        hint="OpenAI 兼容地址，一般以 /v1 结尾"
+        text={e.baseURL} disabled={props.disabled}
+        onEdit={text => props.onChange({ baseURL: text })} />
       <SettingsSecretField
-        id={`media-studio-key-${e.draftUid}`}
+        id={`ms-${uid}-key`}
         label="API Key"
         hint={`写入凭据库「${refName}」（只写不读）；也可以改用系统环境变量`}
         text={e.keyDraft}
-        disabled={false}
+        disabled={props.disabled}
         configured={configured || keyFilled}
         stateLabel={keyFilled ? '已输入，保存后生效' : configured ? '已配置' : '未配置'}
         onEdit={text => props.onChange({ keyDraft: text })}
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button style={btnGhost} onClick={props.onRemove}>删除</button>
+        <button type="button" style={{ ...btn, border: 'none', opacity: 0.6 }} disabled={props.disabled}
+          onClick={props.onRemove}>删除</button>
       </div>
     </div>
   )
@@ -368,6 +381,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
 
   // 从 scope 快照同步到本地草稿；Key 配置状态单独异步查，不回写条目列表。
   // 返回最新的凭据状态，保存流程用它拼「缺 Key」提醒。
@@ -397,6 +411,8 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     try {
       setScope(ctx.configForms.get(NS))
     } catch {
+      setScope(null)
+      setSaveFailed(false)
       setError(`配置命名空间「${NS}」不可用——插件没在 profile 里加载。`)
       return
     }
@@ -407,10 +423,8 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     void loadAll()
   }, [scope, loadAll])
 
-  if (error !== '' && scope === null) {
-    return <div style={box}><span style={tip(true)}>{error}</span></div>
-  }
-
+  const snapshotReady = scope !== null && sectionOf(scope) !== undefined
+  const snapshotWritable = snapshotReady && scope.getSnapshot().writable !== false
   const isDirty = (): boolean => {
     if (baseline === '') return false
     return JSON.stringify({ img: imageDrafts, vid: videoDrafts, params }) !== baseline
@@ -467,21 +481,16 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
 
   const setParam = (key: string, value: unknown): void => setParams(prev => ({ ...prev, [key]: value }))
   const param = (key: string): string => String(params[key] ?? '')
-  /** 数字参数：解析失败或低于下限时忽略本次输入。 */
-  const setNumberParam = (key: string, raw: string, min: number): void => {
-    const n = Math.round(Number(raw))
-    if (Number.isFinite(n) && n >= min) setParam(key, n)
-  }
 
   const reload = (): void => {
     if (isDirty() && !safeConfirm('有未保存的修改，重新加载会丢弃这些修改，确定吗？')) return
     void loadAll()
   }
 
-  // 保存：参数和条目走 scope.apply 的 path 寻址一次写入；
-  // 各条目里填了 Key 草稿的，顺手写进凭据库。
+  // 保存：条目和参数走官方唯一写通道 scope.mutate（path 寻址、带 revision）；
+  // 各条目里填了 Key 草稿的，顺手写进凭据库。任何一步失败都明确报错。
   const save = async (): Promise<void> => {
-    if (scope === null) return
+    if (scope === null || busy) return
     const seenIds = new Set<string>()
     for (const d of [...imageDrafts, ...videoDrafts]) {
       if (d.providerKey === '' && d.id.trim() === '' && d.model.trim() === '' && d.baseURL.trim() === '') {
@@ -506,6 +515,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     }
     setBusy(true)
     setError('')
+    setSaveFailed(false)
     try {
       // 凭据名自动派生（空的时候）；用户在 patch 里手写过的保留不动
       const fillRef = (d: EntryDraft): EntryDraft =>
@@ -535,13 +545,23 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
           .filter(([k]) => !MODEL_KEYS.has(k))
           .map(([k, v]) => ({ op: 'set', path: [k], value: v })),
       ]
-      const ok = await scope.apply(ops, snap.revision)
-      if (!ok) { setError('保存被拒绝：配置已在别处修改，请点「重新加载」后重试'); return }
+      // 官方唯一写通道是 scope.mutate（见 SettingsFormModel.save）；
+      // 返回 false 表示 revision 冲突被 host 拒绝。
+      const landed = await scope.mutate(ops, snap.revision)
+      if (landed !== true) {
+        setSaveFailed(true)
+        setError('保存被拒绝：配置已在别处修改，请点「重新加载」后重试')
+        return
+      }
       // Key 草稿写凭据库（只写有输入的）
       for (const d of [...imageDraftsFilled, ...videoDraftsFilled]) {
         if (d.keyDraft.trim() !== '' && d.apiKeyEnv.trim() !== '') {
           const res = await ctx.remote.credentials.set(d.apiKeyEnv.trim(), d.keyDraft.trim())
-          if (!res.ok) { setError(`「${d.id}」的 Key 写入凭据库失败`); return }
+          if (!res.ok) {
+            setSaveFailed(true)
+            setError(`「${d.id}」的 Key 写入凭据库失败`)
+            return
+          }
         }
       }
       const status = await loadAll()
@@ -552,126 +572,138 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       setMessage(missing.length > 0
         ? `已保存。提醒：${missing.join('、')} 还没配置 API Key（也没检测到已配置过），生成时会失败`
         : '已保存，配置即时生效')
+    } catch (err) {
+      setSaveFailed(true)
+      setError(`保存出错：${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusy(false)
     }
   }
 
-  const dirty = isDirty()
+  const dirty = snapshotReady && isDirty()
+  const disabled = !snapshotReady
 
   return (
-    <div style={box}>
-      <Section title="图片模型" badge={`${imageDrafts.length} 个`}
-        desc="选服务商自动填好地址和模型，填上 API Key 就能用；对话和工具按 id 引用条目。">
-        {imageDrafts.length === 0
-          ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
-          : null}
-        {imageDrafts.map((d, i) => (
-          <EntryCard key={d.draftUid} entry={d} kind="image" keyStatus={keyStatus}
-            onChange={patch => changeEntry('image', i, patch)}
-            onProviderChange={key => applyPreset('image', i, key)}
-            onRemove={() => removeEntry('image', i)} />
-        ))}
-        <div><button style={btn} onClick={() => addEntry('image')}>+ 添加图片模型</button></div>
-      </Section>
+    <SettingsForm
+      labels={{
+        unavailable: '配置不可用——插件没在本 profile 里加载',
+        readOnly: '当前为只读状态，无法修改配置',
+        saveFailed: '保存失败——请按下方提示修正后重试',
+        save: '保存配置',
+        saving: '保存中…',
+      }}
+      state={{
+        available: snapshotReady,
+        writable: snapshotWritable,
+        dirty,
+        invalid: false,
+        saving: busy,
+        failed: saveFailed,
+      }}
+      onSave={() => { void save() }}
+      onDiscard={() => { void loadAll() }}
+    >
+      <div style={box}>
+        {error !== '' ? <span style={tip(true)}>{error}</span> : null}
+        {!snapshotReady && error === '' ? <span style={tip(true)}>配置还没加载好，稍等一下再试。</span> : null}
 
-      <Section title="视频模型" badge={`${videoDrafts.length} 个`}
-        desc="同上；视频任务默认后台生成，完成后推送进会话。">
-        {videoDrafts.length === 0
-          ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
-          : null}
-        {videoDrafts.map((d, i) => (
-          <EntryCard key={d.draftUid} entry={d} kind="video" keyStatus={keyStatus}
-            onChange={patch => changeEntry('video', i, patch)}
-            onProviderChange={key => applyPreset('video', i, key)}
-            onRemove={() => removeEntry('video', i)} />
-        ))}
-        <div><button style={btn} onClick={() => addEntry('video')}>+ 添加视频模型</button></div>
-      </Section>
+        <Section title="图片模型" badge={`${imageDrafts.length} 个`}
+          desc="选服务商自动填好地址和模型，填上 API Key 就能用；对话和工具按 id 引用条目。">
+          {imageDrafts.length === 0
+            ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
+            : null}
+          {imageDrafts.map((d, i) => (
+            <EntryCard key={d.draftUid} entry={d} kind="image" keyStatus={keyStatus} disabled={disabled}
+              onChange={patch => changeEntry('image', i, patch)}
+              onProviderChange={key => applyPreset('image', i, key)}
+              onRemove={() => removeEntry('image', i)} />
+          ))}
+          <div><button type="button" style={btn} disabled={disabled} onClick={() => addEntry('image')}>+ 添加图片模型</button></div>
+        </Section>
 
-      <Section title="默认参数"
-        desc="这里配置的只是默认值：生成时在对话里明确指定了参数（模型、分辨率、画幅、时长等），以对话指定的为准。输出目录支持 ~ 开头，展开到用户主目录，默认 ~/.dsh/media-studio。">
-        <Line>
-          <Slot label="默认图片模型" title="对话里没指定 model 时的兜底">
-            <Select value={param('defaultImageModel')} options={imageDrafts.map(d => d.id)}
-              onChange={v => setParam('defaultImageModel', v)} />
-          </Slot>
-          <Slot label="默认视频模型" title="对话里没指定 model 时的兜底">
-            <Select value={param('defaultVideoModel')} options={videoDrafts.map(d => d.id)}
-              onChange={v => setParam('defaultVideoModel', v)} />
-          </Slot>
-        </Line>
-        <Line>
-          <Slot label="输出目录" title="支持 ~ 开头（展开到用户主目录）；相对路径基于会话工作目录" flex="3 1 260px">
-            <input style={input} value={param('outputDir')} onChange={e => setParam('outputDir', e.target.value)} />
-          </Slot>
-          <Slot label="自动保存" title="图片是否额外落盘一份（视频始终落盘，播放需要文件）" flex="1 1 130px">
-            <select style={input} value={params.autoSave === false ? 'no' : 'yes'}
-              onChange={e => setParam('autoSave', e.target.value === 'yes')}>
-              <option value="yes">开启</option>
-              <option value="no">关闭</option>
-            </select>
-          </Slot>
-        </Line>
-        <Line>
-          <span style={rowHead}>图片</span>
-          <Slot label="分辨率" title="分辨率档位；要用人家的自定义档位时改 profile patch 里的 imageResolution">
-            <Select value={param('imageResolution')} options={IMAGE_RESOLUTIONS}
-              onChange={v => setParam('imageResolution', v)} />
-          </Slot>
-          <Slot label="画幅" title="宽高比，如 16:9 横、9:16 竖">
-            <Select value={param('imageAspectRatio')} options={IMAGE_RATIOS}
-              onChange={v => setParam('imageAspectRatio', v)} />
-          </Slot>
-        </Line>
-        <Line>
-          <span style={rowHead}>视频</span>
-          <Slot label="时长" title="4–12 秒">
-            <Select value={param('videoSeconds')} options={VIDEO_SECONDS}
-              onChange={v => {
-                const n = Math.round(Number(v))
-                if (Number.isFinite(n)) setParam('videoSeconds', Math.min(12, Math.max(4, n)))
-              }} />
-          </Slot>
-          <Slot label="尺寸" title="分辨率档位">
-            <Select value={param('videoSize')} options={VIDEO_SIZES}
-              onChange={v => setParam('videoSize', v)} />
-          </Slot>
-          <Slot label="画幅" title="宽高比">
-            <Select value={param('videoAspectRatio')} options={VIDEO_RATIOS}
-              onChange={v => setParam('videoAspectRatio', v)} />
-          </Slot>
-        </Line>
-      </Section>
+        <Section title="视频模型" badge={`${videoDrafts.length} 个`}
+          desc="同上；视频任务默认后台生成，完成后推送进会话。">
+          {videoDrafts.length === 0
+            ? <span style={sectionDesc}>还没有条目——点下面「添加」，选个服务商就填好大半了。</span>
+            : null}
+          {videoDrafts.map((d, i) => (
+            <EntryCard key={d.draftUid} entry={d} kind="video" keyStatus={keyStatus} disabled={disabled}
+              onChange={patch => changeEntry('video', i, patch)}
+              onProviderChange={key => applyPreset('video', i, key)}
+              onRemove={() => removeEntry('video', i)} />
+          ))}
+          <div><button type="button" style={btn} disabled={disabled} onClick={() => addEntry('video')}>+ 添加视频模型</button></div>
+        </Section>
 
-      <Section title="高级" desc="网络与轮询节奏（毫秒），一般不用改；保存后即时生效。" defaultOpen={false}>
-        <Line>
-          <Slot label="请求超时" title="单次生成 HTTP 请求的最长等待（毫秒）">
-            <input style={input} type="number" min={1000} step={1000}
-              value={param('requestTimeoutMs')}
-              onChange={e => setNumberParam('requestTimeoutMs', e.target.value, 1000)} />
-          </Slot>
-          <Slot label="轮询间隔" title="查询视频任务进度的间隔（毫秒）">
-            <input style={input} type="number" min={200} step={500}
-              value={param('videoPollIntervalMs')}
-              onChange={e => setNumberParam('videoPollIntervalMs', e.target.value, 200)} />
-          </Slot>
-          <Slot label="轮询上限" title="超过此时长任务还没完成，按失败处理（毫秒）">
-            <input style={input} type="number" min={1000} step={10000}
-              value={param('videoPollTimeoutMs')}
-              onChange={e => setNumberParam('videoPollTimeoutMs', e.target.value, 1000)} />
-          </Slot>
-        </Line>
-      </Section>
+        <Section title="默认参数"
+          desc="这里配置的只是默认值：生成时在对话里明确指定了参数（模型、分辨率、画幅、时长等），以对话指定的为准。">
+          <ValueField id="ms-output-dir" label="输出目录"
+            hint="支持 ~ 开头（展开到用户主目录），默认 ~/.dsh/media-studio；相对路径基于会话工作目录"
+            text={param('outputDir')} disabled={disabled}
+            onEdit={text => setParam('outputDir', text)} />
+          <SelectRow id="ms-autosave" label="自动保存"
+            hint="图片是否额外落盘一份（视频始终落盘，播放需要文件）"
+            value={params.autoSave === false ? 'no' : 'yes'} options={['yes', 'no']}
+            optionLabels={{ yes: '开启', no: '关闭' }} disabled={disabled}
+            onChange={v => setParam('autoSave', v === 'yes')} />
+          <span style={{ ...fieldLabel, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>图片</span>
+          <SelectRow id="ms-image-resolution" label="分辨率"
+            hint="常用 1K–4K；要用人家的自定义档位时改 profile patch 里的 imageResolution"
+            value={param('imageResolution')} options={IMAGE_RESOLUTIONS} disabled={disabled}
+            onChange={v => setParam('imageResolution', v)} />
+          <SelectRow id="ms-image-ratio" label="画幅" hint="宽高比，如 16:9 横、9:16 竖"
+            value={param('imageAspectRatio')} options={IMAGE_RATIOS} disabled={disabled}
+            onChange={v => setParam('imageAspectRatio', v)} />
+          <span style={{ ...fieldLabel, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>视频</span>
+          <SelectRow id="ms-video-seconds" label="时长" hint="4–12 秒"
+            value={param('videoSeconds')} options={VIDEO_SECONDS} disabled={disabled}
+            onChange={v => {
+              const n = Math.round(Number(v))
+              if (Number.isFinite(n)) setParam('videoSeconds', Math.min(12, Math.max(4, n)))
+            }} />
+          <SelectRow id="ms-video-size" label="尺寸" hint="分辨率档位"
+            value={param('videoSize')} options={VIDEO_SIZES} disabled={disabled}
+            onChange={v => setParam('videoSize', v)} />
+          <SelectRow id="ms-video-ratio" label="画幅" hint="宽高比"
+            value={param('videoAspectRatio')} options={VIDEO_RATIOS} disabled={disabled}
+            onChange={v => setParam('videoAspectRatio', v)} />
+          <SelectRow id="ms-default-image-model" label="默认图片模型"
+            hint="对话里没指定 model 时的兜底"
+            value={param('defaultImageModel')} options={imageDrafts.map(d => d.id)} disabled={disabled}
+            onChange={v => setParam('defaultImageModel', v)} />
+          <SelectRow id="ms-default-video-model" label="默认视频模型"
+            hint="对话里没指定 model 时的兜底"
+            value={param('defaultVideoModel')} options={videoDrafts.map(d => d.id)} disabled={disabled}
+            onChange={v => setParam('defaultVideoModel', v)} />
+        </Section>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button style={btnPrimary} disabled={busy} onClick={() => { void save() }}>
-          {busy ? '保存中…' : dirty ? '保存配置 *' : '保存配置'}
-        </button>
-        <button style={btn} disabled={busy} onClick={() => reload()}>重新加载</button>
-        <span style={tip(error !== '')}>{error !== '' ? error : message}</span>
+        <Section title="高级" desc="网络与轮询节奏（毫秒），一般不用改；保存后即时生效。">
+          <ValueField id="ms-request-timeout" label="请求超时（毫秒）" numeric
+            hint="单次生成 HTTP 请求的最长等待"
+            text={param('requestTimeoutMs')} disabled={disabled}
+            onEdit={text => {
+              const n = Math.round(Number(text))
+              if (Number.isFinite(n) && n >= 1000) setParam('requestTimeoutMs', n)
+            }} />
+          <ValueField id="ms-poll-interval" label="视频轮询间隔（毫秒）" numeric
+            hint="查询视频任务进度的间隔"
+            text={param('videoPollIntervalMs')} disabled={disabled}
+            onEdit={text => {
+              const n = Math.round(Number(text))
+              if (Number.isFinite(n) && n >= 200) setParam('videoPollIntervalMs', n)
+            }} />
+          <ValueField id="ms-poll-timeout" label="视频轮询上限（毫秒）" numeric
+            hint="超过此时长任务还没完成，按失败处理"
+            text={param('videoPollTimeoutMs')} disabled={disabled}
+            onEdit={text => {
+              const n = Math.round(Number(text))
+              if (Number.isFinite(n) && n >= 1000) setParam('videoPollTimeoutMs', n)
+            }} />
+        </Section>
+
+        {message !== '' ? <span style={tip(false)}>{message}</span> : null}
       </div>
-    </div>
+    </SettingsForm>
   )
 }
 
