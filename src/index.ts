@@ -1,5 +1,5 @@
 /**
- * dsh-media-studio — DeepSeek Harness plugin.
+ * @gw/dsh-media-studio — DeepSeek Harness plugin.
  *
  * Host half: registers `generate_image` / `generate_video` / `send_media`
  * tools plus the `/image` `/video` slash commands, backed by pluggable

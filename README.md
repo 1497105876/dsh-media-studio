@@ -31,27 +31,33 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 
 要求 dsh `>=0.2.0-rc.2 <0.3.0`、Node `>=22.19.0`。
 
-从源码构建并装进 profile：
+**方式一：git 源安装**（推荐，pnpm 会自动跑 `prepare` 构建）。在
+`~/.dsh/profiles/web/package.json` 的 `dependencies` 加：
+
+```json
+"@gw/dsh-media-studio": "github:1497105876/dsh-media-studio"
+```
+
+在 profile 目录跑一次 `pnpm install`。因为 tarball 里没有构建产物、`prepare`
+要执行 tsc + esbuild，需要把 pnpm 报错提示的 allowBuilds 条目（形如
+`'@gw/dsh-media-studio@https://codeload.github.com/...tar.gz/<commit>': true`）
+加进 `pnpm-workspace.yaml` 的 `allowBuilds`。桌面客户端换成 `profiles/desktop`。
+
+**方式二：源码构建后拷贝**：
 
 ```bash
 git clone https://github.com/1497105876/dsh-media-studio
 cd dsh-media-studio
 npm install          # prepare 钩子会自动跑 npm run build
 
-# web profile（桌面客户端换成 profiles/desktop）
-cp -r . ~/.dsh/profiles/web/node_modules/dsh-media-studio/
+cp -r . ~/.dsh/profiles/web/node_modules/@gw/dsh-media-studio/
 ```
 
-然后在 `~/.dsh/profiles/web/cordis.patch.yml` 追加（装进 node_modules 后按包名引用）：
-
-```yaml
-- insert:
-    - id: media-studio
-      name: dsh-media-studio
-```
-
-重启 dsh 即可。包内自带的 `cordis.patch.yml` 也可以整份抄进 profile patch，
-用来覆盖默认配置（patch 语义是整值替换，不做深合并）。
+然后把 `"@gw/dsh-media-studio"` 加进 profile `package.json` 的
+`dsh.profile.bundles`（装进 node_modules 的包不会自动进加载清单）。
+包内自带的 `cordis.patch.yml` 会被 launcher 按 `dsh.bundle.patch` 声明自动应用，
+无需手动追加入口；想覆盖默认配置时把它的 `config:` 段抄进 profile patch
+（patch 语义是整值替换，不做深合并）。
 
 ## 凭据
 
