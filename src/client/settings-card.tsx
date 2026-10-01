@@ -124,8 +124,10 @@ const REQUIRED_PARAMS: Readonly<Record<string, string>> = {
 }
 
 /** 一个模型条目的编辑草稿。keyDraft 是还没保存的 Key；providerKey 只是
- *  UI 上记住选了哪个服务商预设，都不写进配置。 */
+ *  UI 上记住选了哪个服务商预设；draftUid 是列表 key（id 会被用户编辑，
+ *  不能拿来当 key，否则打字时组件重建丢焦点）——三者都不写进配置。 */
 interface EntryDraft {
+  draftUid: string
   id: string
   label: string
   providerKey: string
@@ -135,6 +137,12 @@ interface EntryDraft {
   apiKeyEnv: string
   keyDraft: string
   keyConfigured: boolean
+}
+
+let draftUidSeq = 0
+function newDraftUid(): string {
+  draftUidSeq += 1
+  return `draft-${Date.now().toString(36)}-${draftUidSeq}`
 }
 
 // ---------- 样式（行式布局） ----------
@@ -201,6 +209,7 @@ function entriesOf(section: Record<string, unknown> | undefined, key: 'imageMode
     const provider = String(raw?.provider ?? 'openai')
     const baseURL = String(raw?.baseURL ?? '')
     return {
+      draftUid: newDraftUid(),
       id: String(raw?.id ?? ''),
       label: String(raw?.label ?? ''),
       providerKey: guessProviderKey(provider, baseURL),
@@ -286,6 +295,8 @@ function EntryCard(props: {
   entry: EntryDraft
   kind: MediaKind
   onChange: (patch: Partial<EntryDraft>) => void
+  /** 选了服务商预设：整条目自动填充（provider/baseURL/model/label/id）。 */
+  onProviderChange: (presetKey: string) => void
   onRemove: () => void
 }) {
   const e = props.entry
@@ -293,7 +304,7 @@ function EntryCard(props: {
     <div style={entryBox}>
       <Line>
         <Slot label="服务商" title="选中即自动填充接口地址和参考模型名，只需再填 API Key；下拉没有的服务商选「自定义」手填" flex="1 1 260px">
-          <ProviderSelect kind={props.kind} value={e.providerKey} onChange={v => props.onChange({ providerKey: v })} />
+          <ProviderSelect kind={props.kind} value={e.providerKey} onChange={v => props.onProviderChange(v)} />
         </Slot>
       </Line>
       <Line>
@@ -315,7 +326,7 @@ function EntryCard(props: {
         </Slot>
       </Line>
       <SettingsSecretField
-        id={`media-studio-key-${e.id || 'new'}`}
+        id={`media-studio-key-${e.draftUid}`}
         label="API Key"
         hint="保存在 dsh 凭据库里（只写不读）；也可以改用系统环境变量"
         text={e.keyDraft}
@@ -391,6 +402,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
   }
   const addEntry = (kind: MediaKind): void => {
     const fresh: EntryDraft = {
+      draftUid: newDraftUid(),
       id: '', label: '', providerKey: '', provider: kind === 'image' ? 'openai' : 'openai-videos',
       model: '', baseURL: '', apiKeyEnv: '', keyDraft: '', keyConfigured: false,
     }
@@ -461,7 +473,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       setVideoDrafts(videoDraftsFilled)
 
       const snap = scope.getSnapshot()
-      const strip = ({ keyDraft: _k, keyConfigured: _c, providerKey: _p, ...rest }: EntryDraft) => rest
+      const strip = ({ draftUid: _u, keyDraft: _k, keyConfigured: _c, providerKey: _p, ...rest }: EntryDraft) => rest
       const ops = [
         { op: 'set', path: ['imageModels'], value: imageDraftsFilled.map(strip) },
         { op: 'set', path: ['videoModels'], value: videoDraftsFilled.map(strip) },
@@ -490,8 +502,9 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       <Section title="图片模型" badge={`${imageDrafts.length} 个`}
         desc="选服务商自动填好地址和模型，填上 API Key 就能用；对话和工具按 id 引用条目。">
         {imageDrafts.map((d, i) => (
-          <EntryCard key={d.id !== '' ? d.id : `img-idx-${i}`} entry={d} kind="image"
+          <EntryCard key={d.draftUid} entry={d} kind="image"
             onChange={patch => changeEntry('image', i, patch)}
+            onProviderChange={key => applyPreset('image', i, key)}
             onRemove={() => removeEntry('image', i)} />
         ))}
         <div><button style={btn} onClick={() => addEntry('image')}>+ 添加图片模型</button></div>
@@ -500,8 +513,9 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
       <Section title="视频模型" badge={`${videoDrafts.length} 个`}
         desc="同上；视频任务默认后台生成，完成后推送进会话。">
         {videoDrafts.map((d, i) => (
-          <EntryCard key={d.id !== '' ? d.id : `vid-idx-${i}`} entry={d} kind="video"
+          <EntryCard key={d.draftUid} entry={d} kind="video"
             onChange={patch => changeEntry('video', i, patch)}
+            onProviderChange={key => applyPreset('video', i, key)}
             onRemove={() => removeEntry('video', i)} />
         ))}
         <div><button style={btn} onClick={() => addEntry('video')}>+ 添加视频模型</button></div>
@@ -547,6 +561,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
           <Slot label="时长" title="4–12 秒">
             <ComboBox value={param('videoSeconds')} options={VIDEO_SECONDS}
               onChange={v => {
+                if (v.trim() === '') return
                 const n = Math.round(Number(v))
                 if (Number.isFinite(n)) setParam('videoSeconds', Math.min(12, Math.max(4, n)))
               }} />
