@@ -133,8 +133,8 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 | `autoSave` | `true` | 是否自动落盘一份 |
 | `imageResolution` / `imageAspectRatio` | `2K` / `16:9` | 图片默认参数（允许服务商支持的其他档位） |
 | `videoSeconds` / `videoSize` / `videoAspectRatio` | `5` / `720P` / `16:9` | 视频默认参数（允许服务商支持的其他档位） |
-| `requestTimeoutMs` | `300000` | 生成请求超时 |
-| `videoPollIntervalMs` / `videoPollTimeoutMs` | `2000` / `900000` | 视频任务轮询 |
+| `requestTimeoutSec` | `300` | 生成请求超时（秒） |
+| `videoPollIntervalSec` / `videoPollTimeoutSec` | `30` / `300` | 视频任务轮询（秒） |
 
 ## 架构
 

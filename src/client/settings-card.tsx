@@ -677,27 +677,27 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
             onChange={v => setParam('defaultVideoModel', v)} />
         </Section>
 
-        <Section title="高级" desc="网络与轮询节奏（毫秒），一般不用改；保存后即时生效。">
-          <ValueField id="ms-request-timeout" label="请求超时（毫秒）" numeric
-            hint="单次生成 HTTP 请求的最长等待"
-            text={param('requestTimeoutMs')} disabled={disabled}
+        <Section title="高级" desc="超时与轮询节奏（单位：秒），一般不用改；保存后即时生效。">
+          <ValueField id="ms-request-timeout" label="请求超时（秒）" numeric
+            hint="单次生成 HTTP 请求的最长等待，默认 300 秒"
+            text={param('requestTimeoutSec')} disabled={disabled}
             onEdit={text => {
               const n = Math.round(Number(text))
-              if (Number.isFinite(n) && n >= 1000) setParam('requestTimeoutMs', n)
+              if (Number.isFinite(n)) setParam('requestTimeoutSec', n)
             }} />
-          <ValueField id="ms-poll-interval" label="视频轮询间隔（毫秒）" numeric
-            hint="查询视频任务进度的间隔"
-            text={param('videoPollIntervalMs')} disabled={disabled}
+          <ValueField id="ms-poll-interval" label="视频轮询间隔（秒）" numeric
+            hint="查询视频任务进度的间隔，默认 30 秒"
+            text={param('videoPollIntervalSec')} disabled={disabled}
             onEdit={text => {
               const n = Math.round(Number(text))
-              if (Number.isFinite(n) && n >= 200) setParam('videoPollIntervalMs', n)
+              if (Number.isFinite(n)) setParam('videoPollIntervalSec', n)
             }} />
-          <ValueField id="ms-poll-timeout" label="视频轮询上限（毫秒）" numeric
-            hint="超过此时长任务还没完成，按失败处理"
-            text={param('videoPollTimeoutMs')} disabled={disabled}
+          <ValueField id="ms-poll-timeout" label="视频轮询上限（秒）" numeric
+            hint="超过此时长任务还没完成，按失败处理，默认 300 秒"
+            text={param('videoPollTimeoutSec')} disabled={disabled}
             onEdit={text => {
               const n = Math.round(Number(text))
-              if (Number.isFinite(n) && n >= 1000) setParam('videoPollTimeoutMs', n)
+              if (Number.isFinite(n)) setParam('videoPollTimeoutSec', n)
             }} />
         </Section>
 

@@ -49,12 +49,12 @@ export interface Config {
   videoSize: Volatile<string>
   /** Default video aspect ratio. */
   videoAspectRatio: Volatile<string>
-  /** HTTP timeout for generation requests (ms). */
-  requestTimeoutMs: Volatile<number>
-  /** Video task polling interval (ms). */
-  videoPollIntervalMs: Volatile<number>
-  /** Video task polling budget (ms). */
-  videoPollTimeoutMs: Volatile<number>
+  /** HTTP timeout for generation requests (seconds). */
+  requestTimeoutSec: Volatile<number>
+  /** Video task polling interval (seconds). */
+  videoPollIntervalSec: Volatile<number>
+  /** Video task polling budget (seconds). */
+  videoPollTimeoutSec: Volatile<number>
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -71,7 +71,7 @@ export const Config: Schema<Config> = Schema.object({
   videoSeconds: Schema.number().step(1).min(4).max(12).default(5).volatile(),
   videoSize: Schema.string().default('720P').volatile(),
   videoAspectRatio: Schema.string().default('16:9').volatile(),
-  requestTimeoutMs: Schema.number().default(300_000).volatile(),
-  videoPollIntervalMs: Schema.number().default(2_000).volatile(),
-  videoPollTimeoutMs: Schema.number().default(900_000).volatile(),
+  requestTimeoutSec: Schema.number().default(300).volatile(),
+  videoPollIntervalSec: Schema.number().default(30).volatile(),
+  videoPollTimeoutSec: Schema.number().default(300).volatile(),
 }) as unknown as Schema<Config>
