@@ -10,8 +10,9 @@
  *    `--wait` results);
  *  - a `conversation.message.images` fill that adds download + save-as to the
  *    regular chat image gallery;
- *  - a `settings.plugins.tab` card (Settings → Plugins → 媒体生成) for
- *    credentials and volatile config editing over the official remote seams.
+ *  - a `plugins.item` credential card inside the entry's own configuration
+ *    page (API key filling over the official remote credential seam; the
+ *    volatile config fields are edited by the stock auto-generated form).
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -20,11 +21,11 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import { MediaCommandRow } from './command-row.tsx'
 import { MessageMediaImages } from './gallery.tsx'
-import { registerSettingsTab } from './settings-card.tsx'
+import { registerCredentialCard } from './settings-card.tsx'
 import { MediaToolRow } from './tool-row.tsx'
 
 /** Slot registry + remote seams required by this presentation plugin. */
-export const inject = ['slots', 'remote', 'remote.credentials']
+export const inject = ['slots', 'remote', 'remote.credentials', 'configForms']
 
 /** Register the media tool rows, command rows, message gallery fill, and the settings tab. */
 export function apply(ctx: Context): void {
@@ -42,5 +43,5 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('conversation.message.images', () => ctx.slots.register(
     { name: 'conversation.message.images', priority: -1 }, MessageMediaImages))
 
-  registerSettingsTab(ctx as unknown as import('./settings-card.tsx').SlotsContextLike)
+  registerCredentialCard(ctx as unknown as import('./settings-card.tsx').SlotsContextLike)
 }
