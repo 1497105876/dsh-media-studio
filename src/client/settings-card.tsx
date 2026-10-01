@@ -60,6 +60,12 @@ const tip = (bad: boolean): CSSProperties => ({
   fontSize: 12, minHeight: 14, color: bad ? 'rgb(255,105,97)' : 'rgb(52,199,89)',
 })
 
+// 凭据名不需要用户起：由条目 id 自动派生（MEDIA_STUDIO_<ID>），
+// 保证过 dsh-credentials 的环境变量名语法校验。
+function deriveRef(id: string): string {
+  return `MEDIA_STUDIO_${id.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`
+}
+
 // ---------- 小工具 ----------
 
 function sectionOf(scope: any): Record<string, unknown> | undefined {
@@ -133,9 +139,6 @@ function EntryCard(props: {
         </Field>
         <Field label="接口地址（Base URL）">
           <input style={input} value={e.baseURL} onChange={ev => props.onChange({ baseURL: ev.target.value })} />
-        </Field>
-        <Field label="凭据名（环境变量风格）">
-          <input style={input} value={e.apiKeyEnv} onChange={ev => props.onChange({ apiKeyEnv: ev.target.value })} />
         </Field>
       </div>
       <SettingsSecretField
@@ -223,17 +226,25 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
     setBusy(true)
     setError('')
     try {
+      // 凭据名自动派生（空的时候）；用户在 patch 里手写过的保留不动
+      const fillRef = (d: EntryDraft): EntryDraft =>
+        d.apiKeyEnv.trim() === '' ? { ...d, apiKeyEnv: deriveRef(d.id) } : d
+      const imageDraftsFilled = imageDrafts.map(fillRef)
+      const videoDraftsFilled = videoDrafts.map(fillRef)
+      setImageDrafts(imageDraftsFilled)
+      setVideoDrafts(videoDraftsFilled)
+
       const snap = scope.getSnapshot()
       const strip = ({ keyDraft: _k, keyConfigured: _c, ...rest }: EntryDraft) => rest
       const ops = [
-        { op: 'set', path: ['imageModels'], value: imageDrafts.map(strip) },
-        { op: 'set', path: ['videoModels'], value: videoDrafts.map(strip) },
+        { op: 'set', path: ['imageModels'], value: imageDraftsFilled.map(strip) },
+        { op: 'set', path: ['videoModels'], value: videoDraftsFilled.map(strip) },
         ...Object.entries(params).map(([k, v]) => ({ op: 'set', path: [k], value: v })),
       ]
       const ok = await scope.apply(ops, snap.revision)
       if (!ok) { setError('保存被拒绝：配置已在别处修改，请点「重新加载」后重试'); return }
       // Key 草稿写凭据库（只写有输入的）
-      for (const d of [...imageDrafts, ...videoDrafts]) {
+      for (const d of [...imageDraftsFilled, ...videoDraftsFilled]) {
         if (d.keyDraft.trim() !== '' && d.apiKeyEnv.trim() !== '') {
           const res = await ctx.remote.credentials.set(d.apiKeyEnv.trim(), d.keyDraft.trim())
           if (!res.ok) { setError(`「${d.id}」的 Key 写入凭据库失败`); return }
