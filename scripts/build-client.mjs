@@ -14,7 +14,7 @@
 import { build } from 'esbuild'
 import { mkdirSync } from 'node:fs'
 
-const id = 'dsh-media-studio'
+const id = '@gw/dsh-media-studio'
 
 mkdirSync('lib', { recursive: true })
 

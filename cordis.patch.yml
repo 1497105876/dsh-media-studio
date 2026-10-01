@@ -1,9 +1,9 @@
-# dsh-media-studio — DSH media generation bundle
+# @gw/dsh-media-studio — DSH media generation bundle
 # 挂载插件行：所有配置项的默认值由插件 Config schema 提供（见 README）。
 # 想覆盖默认值时在 config: 下按整行替换（patch 语义是整值替换，不做深合并）。
 - insert:
     - id: media-studio
-      name: dsh-media-studio
+      name: '@gw/dsh-media-studio'
       config:
         defaultImageModel: agnes-image
         defaultVideoModel: agnes-video
