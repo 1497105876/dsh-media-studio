@@ -31,24 +31,21 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 
 要求 dsh `>=0.2.0-rc.2 <0.3.0`、Node `>=22.19.0`。
 
-**方式一：git 源安装**（推荐，pnpm 会自动跑 `prepare` 构建）。在
+**方式一：git 源安装**（推荐，`lib/` 产物已入库、无构建脚本，装上即用）。在
 `~/.dsh/profiles/web/package.json` 的 `dependencies` 加：
 
 ```json
 "@gw/dsh-media-studio": "github:1497105876/dsh-media-studio"
 ```
 
-在 profile 目录跑一次 `pnpm install`。因为 tarball 里没有构建产物、`prepare`
-要执行 tsc + esbuild，需要把 pnpm 报错提示的 allowBuilds 条目（形如
-`'@gw/dsh-media-studio@https://codeload.github.com/...tar.gz/<commit>': true`）
-加进 `pnpm-workspace.yaml` 的 `allowBuilds`。桌面客户端换成 `profiles/desktop`。
+在 profile 目录跑一次 `pnpm install`。桌面客户端换成 `profiles/desktop`。
 
 **方式二：源码构建后拷贝**：
 
 ```bash
 git clone https://github.com/1497105876/dsh-media-studio
 cd dsh-media-studio
-npm install          # prepare 钩子会自动跑 npm run build
+npm install && npm run build
 
 cp -r . ~/.dsh/profiles/web/node_modules/@gw/dsh-media-studio/
 ```
@@ -114,16 +111,16 @@ export AGNES_API_KEY=sk-...
 
 ## 配置
 
-**设置页（推荐）**：重启 dsh 后打开 设置 → 插件 → 「媒体生成」标签页：
+**设置页（推荐）**：重启 dsh 后打开 设置 → 插件 → media-studio：
 
-- **凭据（API Key）**：列出所有模型条目引用的环境变量名（如 `AGNES_API_KEY`），
-  直接粘贴 Key 保存——走官方 `remote.credentials` 通道存进 dsh 凭据库（只写不读），
-  也可回退到系统环境变量（`setx AGNES_API_KEY sk-...` 后重启 dsh）。
-- **模型条目**：图片 / 视频模型目录的增删改（id、显示名、provider、模型名、
-  Base URL、Key 环境变量名）。
-- **默认参数**：默认模型、输出目录、自动保存、分辨率、画幅、视频时长。
+- **配置表单**：模型条目、默认模型、输出目录、分辨率、画幅、视频时长等全部
+  volatile 配置项由 dsh 官方配置表单自动生成并校验保存，即时生效。
+- **凭据（API Key）**：插件在同页的自己的卡片里列出所有被引用的凭据名
+  （如 `AGNES_API_KEY`），直接粘贴 Key 保存——走官方 `remote.credentials`
+  通道存进 dsh 凭据库（只写不读）。
 
-保存走 `remote.settings.update`（带 revision 并发校验），配置即时生效，无需重启。
+凭据也可以用系统环境变量代替（`setx AGNES_API_KEY sk-...` 后重启 dsh），
+两种方式插件都会识别。
 
 也可以用 profile patch 整值覆盖（patch 语义是整值替换，不做深合并）：
 
@@ -153,7 +150,7 @@ src/
     tool-row.tsx        工具行：内联画廊 / 视频播放器
     command-row.tsx     /image /video 命令行
     gallery.tsx         消息画廊（下载 / 另存为）
-    settings-card.tsx   设置页卡片（凭据 + 配置，走 remote.settings / remote.credentials）
+    settings-card.tsx   凭据卡片（plugins.item，走 remote.credentials 官方凭据通道）
 scripts/
   build-client.mjs  esbuild 打包浏览器半为 lazy-CJS client bundle
 ```
