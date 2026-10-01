@@ -10,9 +10,9 @@
  *    `--wait` results);
  *  - a `conversation.message.images` fill that adds download + save-as to the
  *    regular chat image gallery;
- *  - a `plugins.item` credential card inside the entry's own configuration
- *    page (API key filling over the official remote credential seam; the
- *    volatile config fields are edited by the stock auto-generated form).
+ *  - the plugin's full configuration card on its Plugins-page detail
+ *    (`plugins.bundle.config`): model entries + keys + defaults, over
+ *    configForms scope and the official credential seam.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -21,7 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import { MediaCommandRow } from './command-row.tsx'
 import { MessageMediaImages } from './gallery.tsx'
-import { registerCredentialCard } from './settings-card.tsx'
+import { registerConfigCard } from './settings-card.tsx'
 import { MediaToolRow } from './tool-row.tsx'
 
 /** Slot registry + remote seams required by this presentation plugin. */
@@ -43,5 +43,5 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('conversation.message.images', () => ctx.slots.register(
     { name: 'conversation.message.images', priority: -1 }, MessageMediaImages))
 
-  registerCredentialCard(ctx)
+  registerConfigCard(ctx)
 }
