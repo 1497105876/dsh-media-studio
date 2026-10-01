@@ -114,8 +114,18 @@ export AGNES_API_KEY=sk-...
 
 ## 配置
 
-全部出现在 dsh 设置页（Settings → 插件 → media-studio），也可用 profile
-patch 整值覆盖：
+**设置页（推荐）**：重启 dsh 后打开 设置 → 插件 → 「媒体生成」标签页：
+
+- **凭据（API Key）**：列出所有模型条目引用的环境变量名（如 `AGNES_API_KEY`），
+  直接粘贴 Key 保存——走官方 `remote.credentials` 通道存进 dsh 凭据库（只写不读），
+  也可回退到系统环境变量（`setx AGNES_API_KEY sk-...` 后重启 dsh）。
+- **模型条目**：图片 / 视频模型目录的增删改（id、显示名、provider、模型名、
+  Base URL、Key 环境变量名）。
+- **默认参数**：默认模型、输出目录、自动保存、分辨率、画幅、视频时长。
+
+保存走 `remote.settings.update`（带 revision 并发校验），配置即时生效，无需重启。
+
+也可以用 profile patch 整值覆盖（patch 语义是整值替换，不做深合并）：
 
 | 键 | 默认 | 说明 |
 |---|---|---|
@@ -132,14 +142,18 @@ patch 整值覆盖：
 
 ```
 src/
-  index.ts        host 半入口：export const name / inject / Config / apply
-  tools.ts        三个媒体工具（schema / render / presentationMeta / execute）
-  commands.ts     /image /video 斜杠命令
-  jobs.ts         ctx.jobs 后台任务 + 完成推送（followup / steer / inject 兜底）
-  providers.ts    agnes / openai / openai-videos 三种适配器
-  media.ts        落盘、附件提交、参考图读取、媒体类型嗅探
-  config.ts       schemastery 配置（volatile，进设置页）
-  client/         浏览器半：工具行、命令行、消息画廊（React，内联样式）
+  index.ts            host 半入口：export const name / inject / Config / apply
+  tools.ts            三个媒体工具（schema / render / presentationMeta / execute）
+  commands.ts         /image /video 斜杠命令
+  jobs.ts             ctx.jobs 后台任务 + 完成推送（followup / steer / inject 兜底）
+  providers.ts        agnes / openai / openai-videos 三种适配器
+  media.ts            落盘、附件提交、参考图读取、媒体类型嗅探
+  config.ts           schemastery 配置（volatile，进设置页）
+  client/             浏览器半（React，内联样式）
+    tool-row.tsx        工具行：内联画廊 / 视频播放器
+    command-row.tsx     /image /video 命令行
+    gallery.tsx         消息画廊（下载 / 另存为）
+    settings-card.tsx   设置页卡片（凭据 + 配置，走 remote.settings / remote.credentials）
 scripts/
   build-client.mjs  esbuild 打包浏览器半为 lazy-CJS client bundle
 ```
