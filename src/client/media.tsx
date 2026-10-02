@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { nativeOpenPath, probeNativeOpen } from './native-open.ts'
 import type { MediaItemMeta, MediaResultMeta } from '../types.ts'
 
 /** One durable image reference or a submission-echo preview (ui-conversation contract). */
@@ -72,6 +73,36 @@ export function DownloadButton({ url, name, style }: { url: string; name: string
   )
 }
 
+/** "🖥 打开": hand the host-side file to the OS-associated application (the
+ *  double-click behavior). Renders nothing when the host can't open native
+ *  paths. */
+export function OpenSystemButton({ path, style }: { path: string; style?: CSSProperties }): ReactNode {
+  const [available, setAvailable] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void probeNativeOpen().then(ok => {
+      if (!cancelled) setAvailable(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (!available) return null
+  return (
+    <button
+      type="button"
+      title="用系统默认应用打开"
+      onClick={() => void nativeOpenPath(path)}
+      style={{
+        fontSize: 12, color: '#4a90d9', background: 'none', border: 'none',
+        padding: 0, cursor: 'pointer', ...style,
+      }}
+    >
+      🖥 打开
+    </button>
+  )
+}
+
 /** Inject once: the lightbox fade-in animation (inline styles can't keyframe). */
 let lightboxStyleInjected = false
 function injectLightboxStyle(): void {
@@ -96,8 +127,8 @@ const lightboxClose: CSSProperties = {
 }
 
 /** Full-size overlay preview: name / dimensions / size info, click toggles
- *  fit-window ↔ 100% zoom (scrollable), one-click download, Esc / backdrop close. */
-function Lightbox({ url, name, size, onClose }: { url: string; name: string; size?: number; onClose: () => void }): ReactNode {
+ *  fit-window ↔ 100% zoom (scrollable), download + native open, Esc / backdrop close. */
+function Lightbox({ url, name, size, path, onClose }: { url: string; name: string; size?: number; path?: string; onClose: () => void }): ReactNode {
   const [full, setFull] = useState(false)
   const [dims, setDims] = useState<{ w: number; h: number } | undefined>(undefined)
   useEffect(() => {
@@ -154,7 +185,10 @@ function Lightbox({ url, name, size, onClose }: { url: string; name: string; siz
       </div>
       <div style={lightboxBar} onClick={event => event.stopPropagation()}>
         <span style={{ ...lightboxText, opacity: 0.6 }}>{full ? '点击图片回到适应窗口' : '点击图片查看原始尺寸'}</span>
-        <DownloadButton url={url} name={name} style={{ color: '#8fc4ff', marginLeft: 'auto' }} />
+        {path === undefined ? null : <OpenSystemButton path={path} style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+        <DownloadButton
+          url={url} name={name} style={{ color: '#8fc4ff', flexShrink: 0, ...(path === undefined ? { marginLeft: 'auto' } : {}) }}
+        />
       </div>
     </div>
   )
@@ -282,7 +316,8 @@ export function MediaVideoCard({ item }: { item: MediaItemMeta }): ReactNode {
         <span style={{ fontSize: 12, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           🎬 {name}{sizeText === '' ? '' : ` · ${sizeText}`}
         </span>
-        <DownloadButton url={url} name={name} style={{ marginLeft: 'auto', flexShrink: 0 }} />
+        {item.path === undefined ? null : <OpenSystemButton path={item.path} style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+        <DownloadButton url={url} name={name} style={{ flexShrink: 0, ...(item.path === undefined ? { marginLeft: 'auto' } : {}) }} />
       </div>
     </div>
   )
@@ -292,7 +327,7 @@ export function MediaVideoCard({ item }: { item: MediaItemMeta }): ReactNode {
  *  A single image renders aspect-true (no square crop); multiple images use a
  *  compact square grid. */
 export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): ReactNode {
-  const [opened, setOpened] = useState<{ url: string; name: string; size?: number } | undefined>(undefined)
+  const [opened, setOpened] = useState<{ url: string; name: string; size?: number; path?: string } | undefined>(undefined)
   const images = items.filter(item => item.kind === 'image')
   const videos = items.filter(item => item.kind === 'video')
   const others = items.filter(item => item.kind !== 'image' && item.kind !== 'video')
@@ -310,7 +345,11 @@ export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): R
               <div key={item.path ?? item.name} style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '100%' }}>
                 <button
                   type="button"
-                  onClick={() => setOpened({ url, name, ...(item.bytes === undefined ? {} : { size: item.bytes }) })}
+                  onClick={() => setOpened({
+                    url, name,
+                    ...(item.bytes === undefined ? {} : { size: item.bytes }),
+                    ...(item.path === undefined ? {} : { path: item.path }),
+                  })}
                   style={{
                     padding: 0, border: 'none', background: 'none', cursor: 'zoom-in',
                     lineHeight: 0, alignSelf: 'flex-start', maxWidth: '100%',
@@ -329,7 +368,8 @@ export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): R
                   <span style={{ fontSize: 11, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {name}{sizeText === '' ? '' : ` · ${sizeText}`}
                   </span>
-                  <DownloadButton url={url} name={name} style={{ marginLeft: 'auto', flexShrink: 0 }} />
+                  {item.path === undefined ? null : <OpenSystemButton path={item.path} style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+                  <DownloadButton url={url} name={name} style={{ flexShrink: 0, ...(item.path === undefined ? { marginLeft: 'auto' } : {}) }} />
                 </div>
               </div>
             )
@@ -343,7 +383,7 @@ export function MediaItemGrid({ items }: { items: readonly MediaItemMeta[] }): R
         </div>
       ))}
       {opened === undefined ? null : (
-        <Lightbox url={opened.url} name={opened.name} size={opened.size} onClose={() => setOpened(undefined)} />
+        <Lightbox url={opened.url} name={opened.name} size={opened.size} path={opened.path} onClose={() => setOpened(undefined)} />
       )}
     </div>
   )
