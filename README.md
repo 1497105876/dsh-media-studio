@@ -6,8 +6,8 @@
 
 在 dsh（DeepSeek Harness）聊天里**直接生成图片 / 视频**并发送到会话的插件。
 模型侧拿到 `generate_image` / `generate_video` / `send_media` 三个工具，人侧拿到
-内联画廊、可播放的视频卡片和下载 / 另存为按钮；长耗时生成默认走后台任务，
-完成后自动把结果推送回会话。
+内联画廊、可播放的视频卡片，支持下载与用系统默认应用打开；长耗时生成默认走
+后台任务，完成后自动把结果推送回会话。
 
 生成后端可插拔：内置 **Agnes**（免费额度，图生图 / 首尾帧 / 参考图视频）与
 **OpenAI 兼容**两种适配器，预设硅基流动、阿里百炼、Gemini（OpenAI 兼容端点）、
@@ -21,40 +21,23 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 | 文生视频 | `generate_video`：支持首尾帧（keyframe）与参考图（reference）两种模式 |
 | 发送本地媒体 | `send_media`：把已有图片 / 视频文件以画廊 / 文件卡片形式进入会话 |
 | 斜杠命令 | `/image`、`/video`，加 `--wait` 前缀同步等待并在命令卡片内联展示 |
-| 后台生成 | 默认走 `ctx.jobs` 后台任务，立即返回任务句柄，完成后推送进会话 |
-| 富渲染 | 工具行 / 命令行内联画廊与视频播放器，带下载、另存为 |
+| 后台生成 | 默认走 `ctx.jobs` 后台任务，立即返回任务句柄，完成后自动推送 |
+| 富渲染 | 工具行 / 命令行内联画廊与视频播放器，支持下载、灯箱查看、系统默认应用打开 |
 | 自动保存 | 生成结果写进输出目录（默认 `~/.dsh/media-studio`，`~` 展开到用户主目录；相对路径基于会话工作目录） |
 | 凭据安全 | API key 走 `credential-ref`（环境变量名），永不写进配置文件 |
-| 设置页 | 所有配置项 `volatile`，出现在 dsh 设置页的插件表单里 |
+| 设置卡片 | 插件详情页内的官方样式配置卡片：模型条目、默认参数、高级参数 |
 
 ## 安装
 
-要求 dsh `>=0.2.0-rc.2 <0.3.0`、Node `>=22.19.0`。
+要求 dsh `0.2.0-rc.2`、Node `>=22.19.0`。
 
-**方式一：git 源安装**（推荐，`lib/` 产物已入库、无构建脚本，装上即用）。在
-`~/.dsh/profiles/web/package.json` 的 `dependencies` 加：
+打开 dsh 的 **插件** 页，点右上角 **「+ 添加插件」**，输入 GitHub 地址：
 
-```json
-"@gw/dsh-media-studio": "github:1497105876/dsh-media-studio"
+```
+https://github.com/1497105876/dsh-media-studio
 ```
 
-在 profile 目录跑一次 `pnpm install`。桌面客户端换成 `profiles/desktop`。
-
-**方式二：源码构建后拷贝**：
-
-```bash
-git clone https://github.com/1497105876/dsh-media-studio
-cd dsh-media-studio
-npm install && npm run build
-
-cp -r . ~/.dsh/profiles/web/node_modules/@gw/dsh-media-studio/
-```
-
-然后把 `"@gw/dsh-media-studio"` 加进 profile `package.json` 的
-`dsh.profile.bundles`（装进 node_modules 的包不会自动进加载清单）。
-包内自带的 `cordis.patch.yml` 会被 launcher 按 `dsh.bundle.patch` 声明自动应用，
-无需手动追加入口；想覆盖默认配置时把它的 `config:` 段抄进 profile patch
-（patch 语义是整值替换，不做深合并）。
+安装完成并启用即可。设置卡片在插件详情页里，API Key 直接在卡片里填。
 
 ## 凭据
 
@@ -95,7 +78,7 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 - **`generate_video`** — `prompt` 必填；可选 `model`、`seconds`（4–12）、`size`
   （720P–2K）、`aspect_ratio`、`mode`（text / keyframe / reference）、
   `first_frame` / `last_frame`、`reference_images`、`run_in_background`（默认 true）。
-- **`send_media`** — `paths`（本地文件列表）+ 可选 `caption`。
+- **`send_media`** — `paths`（本地文件路径的字符串数组）+ 可选 `caption`。
 
 三个工具都声明了规范 JSON 输出 schema，并在工具结果里直接渲染媒体块，
 同时投影 `presentationMeta` 供浏览器半渲染富视图。
@@ -111,14 +94,13 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 
 ## 配置
 
-**设置页（推荐）**：打开 设置 → 插件 → media-studio 的配置卡片：
+**设置卡片（推荐）**：插件详情页里的配置卡片，分四区：
 
-- **模型**：图片 / 视频条目增删改，API Key 就在条目里填——走官方
-  `remote.credentials` 通道存进 dsh 凭据库（只写不读），保存即时生效。
-- **默认参数**：默认模型、输出目录、分辨率 / 画幅 / 时长（常见档位下拉
-  点选，也允许手输服务商支持的自定义值）。这些只是默认值，对话里明确
-  指定了参数时以对话指定的为准。
-- **高级**：请求超时与视频轮询节奏，默认折叠，一般不用动。
+- **图片模型 / 视频模型**：选服务商自动填好地址和模型，填上 API Key 就能用；
+  Key 走官方 `remote.credentials` 通道存进 dsh 凭据库（只写不读），保存即时生效。
+- **默认参数**：默认模型、输出目录、分辨率 / 画幅 / 时长（常见档位下拉点选）。
+  这些只是默认值，对话里明确指定了参数时以对话指定的为准。
+- **高级**：请求超时与视频轮询节奏（秒），默认折叠，一般不用动。
 
 凭据也可以用系统环境变量代替（`setx AGNES_API_KEY sk-...` 后重启 dsh），
 两种方式插件都会识别。
@@ -143,15 +125,17 @@ src/
   index.ts            host 半入口：export const name / inject / Config / apply
   tools.ts            三个媒体工具（schema / render / presentationMeta / execute）
   commands.ts         /image /video 斜杠命令
-  jobs.ts             ctx.jobs 后台任务 + 完成推送（followup / steer / inject 兜底）
+  jobs.ts             ctx.jobs 后台任务 + 完成通知（followup / inject）
   providers.ts        agnes / openai / openai-videos 三种适配器
   media.ts            落盘、附件提交、参考图读取、媒体类型嗅探
-  config.ts           schemastery 配置（volatile，进设置页）
-  client/             浏览器半（React，内联样式）
+  config.ts           schemastery 配置（volatile，卡片即时生效）
+  client/             浏览器半（React）
     tool-row.tsx        工具行：内联画廊 / 视频播放器
     command-row.tsx     /image /video 命令行
-    gallery.tsx         消息画廊（下载 / 另存为）
-    settings-card.tsx   凭据卡片（plugins.item，走 remote.credentials 官方凭据通道）
+    gallery.tsx         消息图片画廊（替换 stock gallery）
+    media.tsx           画廊 / 灯箱 / 播放器 / 下载 / 系统打开
+    native-open.ts      宿主原生打开通道（系统默认应用）
+    settings-card.tsx   设置卡片（官方 SettingsForm 风格，走 remote.credentials）
 scripts/
   build-client.mjs  esbuild 打包浏览器半为 lazy-CJS client bundle
 ```
@@ -159,14 +143,6 @@ scripts/
 host 半是 tsc 直出的 ESM（`lib/index.js`）；浏览器半打包成官方
 `window.__ModuleLoader__.load({ id, factory })` 形状（`lib/client.js`），
 `react` 走平台注入的模块表，不自带 react 副本。
-
-## 开发
-
-```bash
-npm install
-npm run typecheck   # host + client 双 tsconfig
-npm run build       # tsc 出 host 半 + esbuild 出 client 半
-```
 
 ## License
 
