@@ -105,7 +105,7 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
               outputDir,
               autoSave: config.autoSave.get(),
             })
-            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, [item]))
+            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, [item]), `图片生成完成（${entry.label || entry.id}）`)
             return { summary: `image generated: ${item.path ?? item.name}` }
           },
         })
@@ -168,7 +168,7 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           work: async (job, signal) => {
             job.updateProgress(`generating video with ${entry.id}…`)
             const videos = await runGeneration(signal, line => job.updateProgress(line))
-            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos))
+            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos), `视频生成完成（${entry.label || entry.id}）`)
             return { summary: `video generated: ${videos[0]?.path ?? ''}` }
           },
         })

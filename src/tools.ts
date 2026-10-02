@@ -336,7 +336,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
           const summary = formatImageSummary(images)
           const agent = lookupAgent(ctx, owner)
           if (agent !== undefined) {
-            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, images))
+            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, images), `图片生成完成（${entry.label || entry.id}）`)
           }
           return { summary }
         },
@@ -435,7 +435,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
           const summary = formatVideoSummary(videos)
           const agent = lookupAgent(ctx, owner)
           if (agent !== undefined) {
-            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos))
+            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos), `视频生成完成（${entry.label || entry.id}）`)
           }
           return { summary }
         },
