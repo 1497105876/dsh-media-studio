@@ -150,7 +150,7 @@ function formatVideoSummary(videos: readonly MediaItemMeta[]): string {
 export function buildImagePushContent(headline: string, images: readonly MediaItemMeta[]): ContentBlock[] {
   const blocks: ContentBlock[] = [{
     type: 'text',
-    text: `${headline}\n${images.map(itemLine).join('\n')}\n\n请立即调用 send_media 工具，把上述文件展示给用户。`,
+    text: `${headline}\n${images.map(itemLine).join('\n')}\n\n请立即调用 send_media 工具，把上述文件展示给用户。不要预先读取、查看或检查内容（无需质检），直接展示。`,
   }]
   for (const item of images) {
     const block = imageBlockFor(item)
@@ -169,7 +169,7 @@ export function buildVideoPushContent(headline: string, videos: readonly MediaIt
   })
   return [{
     type: 'text',
-    text: `${headline}\n${lines.join('\n')}\n文件已保存到输出目录。\n\n请立即调用 send_media 工具，把上述文件展示给用户。`,
+    text: `${headline}\n${lines.join('\n')}\n文件已保存到输出目录。\n\n请立即调用 send_media 工具，把上述文件展示给用户。不要预先读取、抽帧或检查内容（无需质检），直接展示。`,
   }]
 }
 
