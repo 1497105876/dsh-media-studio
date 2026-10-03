@@ -11,8 +11,8 @@ import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands
 import type { Config } from './config.js'
 import { deliverMediaCompletion, ensureMediaInstructions } from './instructions.js'
 import { resolveOutputDir, toDataUri } from './media.js'
-import { resolveApiKey, resolveModel, mediaPayload } from './tools.js'
-import { encodeCommandPayload, type MediaItemMeta } from './types.js'
+import { resolveApiKey, resolveModel } from './tools.js'
+import type { MediaItemMeta } from './types.js'
 import { commitImage, commitVideo } from './media.js'
 import { generateImage, generateVideo, type ReferenceImage } from './providers.js'
 

@@ -52,9 +52,8 @@ export type MediaResultMeta = {
 /** Canonical tool value: image generation. */
 export interface ImageGenerationValue {
   kind: 'image-generation'
-  status: 'started' | 'completed'
-  /** Present only for the background branch (`run_in_background: true`). */
-  jobId?: string
+  status: 'completed'
+
   prompt: string
   model: string
   provider: MediaProvider
@@ -64,8 +63,8 @@ export interface ImageGenerationValue {
 /** Canonical tool value: video generation. */
 export interface VideoGenerationValue {
   kind: 'video-generation'
-  status: 'started' | 'completed'
-  jobId?: string
+  status: 'completed'
+
   prompt: string
   model: string
   provider: MediaProvider
@@ -79,43 +78,3 @@ export interface MediaSendValue {
   files: MediaItemMeta[]
 }
 
-/** JSON payload appended to `/image` `/video` command results for the rich command row. */
-export interface CommandMediaPayload {
-  v: 1
-  kind: 'image' | 'video'
-  text: string
-  items: MediaItemMeta[]
-}
-
-/** Marker framing the command payload inside `CommandResult.text`. */
-export const COMMAND_PAYLOAD_OPEN = '⟨media-studio⟩'
-/** Marker framing the command payload inside `CommandResult.text`. */
-export const COMMAND_PAYLOAD_CLOSE = '⟨/media-studio⟩'
-
-/** Frame one payload for `CommandResult.text`. */
-export function encodeCommandPayload(payload: CommandMediaPayload): string {
-  return `${COMMAND_PAYLOAD_OPEN}${JSON.stringify(payload)}${COMMAND_PAYLOAD_CLOSE}`
-}
-
-/** Recover the payload from a recorded `CommandNode.outcome.text`, if present. */
-export function decodeCommandPayload(text: string | undefined): CommandMediaPayload | undefined {
-  if (text === undefined) return undefined
-  const start = text.indexOf(COMMAND_PAYLOAD_OPEN)
-  const end = text.indexOf(COMMAND_PAYLOAD_CLOSE)
-  if (start < 0 || end < start) return undefined
-  try {
-    const parsed = JSON.parse(text.slice(start + COMMAND_PAYLOAD_OPEN.length, end)) as CommandMediaPayload
-    return parsed !== null && typeof parsed === 'object' && parsed.v === 1 ? parsed : undefined
-  } catch {
-    return undefined
-  }
-}
-
-/** Strip the payload marker from a command result so fallback rows stay readable. */
-export function stripCommandPayload(text: string | undefined): string {
-  if (text === undefined) return ''
-  const start = text.indexOf(COMMAND_PAYLOAD_OPEN)
-  const end = text.indexOf(COMMAND_PAYLOAD_CLOSE)
-  if (start < 0 || end < start) return text
-  return `${text.slice(0, start)}${text.slice(end + COMMAND_PAYLOAD_CLOSE.length)}`.trim()
-}

@@ -20,7 +20,7 @@ import {
 } from './media.js'
 import { generateImage, generateVideo, type ReferenceImage } from './providers.js'
 import type {
-  CommandMediaPayload, ImageGenerationValue, MediaItemMeta, MediaModelEntry, MediaProvider,
+  ImageGenerationValue, MediaItemMeta, MediaModelEntry, MediaProvider,
   MediaSendValue, VideoGenerationValue,
 } from './types.js'
 
@@ -50,7 +50,7 @@ const IMAGE_VALUE_SCHEMA = {
   additionalProperties: false,
   properties: {
     kind: { type: 'string', enum: ['image-generation'], required: true },
-    status: { type: 'string', enum: ['started', 'completed'], required: true },
+    status: { type: 'string', enum: ['completed'], required: true },
     jobId: { type: 'string' },
     prompt: { type: 'string', required: true },
     model: { type: 'string', required: true },
@@ -64,7 +64,7 @@ const VIDEO_VALUE_SCHEMA = {
   additionalProperties: false,
   properties: {
     kind: { type: 'string', enum: ['video-generation'], required: true },
-    status: { type: 'string', enum: ['started', 'completed'], required: true },
+    status: { type: 'string', enum: ['completed'], required: true },
     jobId: { type: 'string' },
     prompt: { type: 'string', required: true },
     model: { type: 'string', required: true },
@@ -265,18 +265,10 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       schema: IMAGE_VALUE_SCHEMA,
       render: (_args, value) => {
         const data = value as unknown as ImageGenerationValue
-        const blocks: ContentBlock[] = []
-        if (data.status === 'started') {
-          blocks.push({
-            type: 'text',
-            text: `⏳ 图片后台生成已开始${data.jobId === undefined ? '' : `（任务 ${data.jobId}）`}，完成后会把图片推送到会话。`,
-          })
-        } else {
-          blocks.push({ type: 'text', text: formatImageSummary(data.images) })
-          for (const item of data.images) {
-            const block = imageBlockFor(item)
-            if (block !== undefined) blocks.push(block)
-          }
+        const blocks: ContentBlock[] = [{ type: 'text', text: formatImageSummary(data.images) }]
+        for (const item of data.images) {
+          const block = imageBlockFor(item)
+          if (block !== undefined) blocks.push(block)
         }
         return blocks
       },
@@ -334,15 +326,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       schema: VIDEO_VALUE_SCHEMA,
       render: (_args, value) => {
         const data = value as unknown as VideoGenerationValue
-        const blocks: ContentBlock[] = []
-        if (data.status === 'started') {
-          blocks.push({
-            type: 'text',
-            text: `⏳ 视频后台生成已开始${data.jobId === undefined ? '' : `（任务 ${data.jobId}）`}，通常需要几分钟，完成后会推送到会话。`,
-          })
-        } else {
-          blocks.push({ type: 'text', text: formatVideoSummary(data.videos) })
-        }
+        const blocks: ContentBlock[] = [{ type: 'text', text: formatVideoSummary(data.videos) }]
         return blocks
       },
       presentationMeta: (_args, value) => {
@@ -443,7 +427,3 @@ export function registerMediaTools(ctx: Context, config: Config): void {
   }))
 }
 
-/** Payload projection shared with the slash commands. */
-export function mediaPayload(kind: 'image' | 'video', text: string, items: readonly MediaItemMeta[]): CommandMediaPayload {
-  return { v: 1, kind, text, items: [...items] }
-}

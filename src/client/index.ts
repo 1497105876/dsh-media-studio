@@ -5,11 +5,8 @@
  *
  * Contributes:
  *  - `tool.call.toolview` rows for the three media tools (inline gallery /
- *    video player with download + save-as);
- *  - `conversation.chat.commandview` rows for `/image` `/video` (rich rows for
- *    `--wait` results);
- *  - a `conversation.message.images` fill that adds download + save-as to the
- *    regular chat image gallery;
+ *    video player with download + system open);
+ *  - a `conversation.message.images` fill for the regular chat image gallery;
  *  - the plugin's full configuration card on its Plugins-page detail
  *    (`plugins.bundle.config`): model entries + keys + defaults, over
  *    configForms scope and the official credential seam.
@@ -19,7 +16,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
-import { MediaCommandRow } from './command-row.tsx'
 import { MessageMediaImages } from './gallery.tsx'
 import { bindNativeOpen } from './native-open.ts'
 import { registerConfigCard } from './settings-card.tsx'
@@ -37,10 +33,8 @@ export function apply(ctx: Context): void {
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
       { name: 'tool.call.toolview', key }, MediaToolRow))
   }
-  for (const key of ['image', 'video']) {
-    ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register(
-      { name: 'conversation.chat.commandview', key }, MediaCommandRow))
-  }
+  // `/image` `/video` deliver through the woken agent's reply (instructions.ts):
+  // no commandview rows for them anymore.
   // Replacing the stock gallery cell is the documented "reuse the cell to
   // replace its presentation" path; the fallback gallery renders when this
   // entry loses the priority election.
