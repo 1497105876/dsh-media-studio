@@ -13,6 +13,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Config } from './config.js'
+import { ensureMediaInstructions } from './instructions.js'
 import {
   commitImage, commitVideo, describeLocalFile, readReferenceImage, resolveOutputDir,
   sniffImageMediaType, imageMediaTypeForPath,
@@ -289,6 +290,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       title: `生成图片：${String(args.prompt ?? '').slice(0, 60)}`,
     }),
     async execute(args, exec) {
+      ensureMediaInstructions(ctx, exec.agent?.id)
       const entry = resolveModel(config.imageModels.get(), config.defaultImageModel.get(), args.model, 'image')
       const apiKey = await resolveApiKey(ctx, entry)
       const referenceImages = await Promise.all((args.reference_images ?? []).map(readReferenceImage))
@@ -353,6 +355,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       title: `生成视频：${String(args.prompt ?? '').slice(0, 60)}`,
     }),
     async execute(args, exec) {
+      ensureMediaInstructions(ctx, exec.agent?.id)
       const entry = resolveModel(config.videoModels.get(), config.defaultVideoModel.get(), args.model, 'video')
       const apiKey = await resolveApiKey(ctx, entry)
       const referenceImages = await Promise.all((args.reference_images ?? []).map(readReferenceImage))
