@@ -134,8 +134,19 @@ function itemLine(item: MediaItemMeta): string {
   return item.path === undefined ? `- ${item.name}` : `- \`${item.path}\``
 }
 
+/** Markdown image references the model should copy into its reply verbatim —
+ *  the chat renders local paths inline (pathImages → /api/file), which puts
+ *  the picture directly in the assistant message instead of a collapsed tool
+ *  card. Backslashes are normalized to forward slashes for markdown. */
+function markdownGallery(images: readonly MediaItemMeta[]): string {
+  const refs = images
+    .filter(item => item.path !== undefined)
+    .map(item => `![生成结果](${item.path!.replace(/\\/g, '/')})`)
+  return refs.length === 0 ? '' : `\n\n向用户展示：请在你的回复中原样输出以下 Markdown 图片行（一行都不要改动，不要用代码块包裹）：\n${refs.join('\n')}`
+}
+
 function formatImageSummary(images: readonly MediaItemMeta[]): string {
-  return `✅ 图片生成完成（${images.length} 张）：\n${images.map(itemLine).join('\n')}`
+  return `✅ 图片生成完成（${images.length} 张）：\n${images.map(itemLine).join('\n')}${markdownGallery(images)}`
 }
 
 function formatVideoSummary(videos: readonly MediaItemMeta[]): string {
@@ -385,7 +396,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       render: (_args, value) => {
         const data = value as unknown as MediaSendValue
         const head = data.caption === undefined || data.caption === '' ? '📎 已发送文件：' : `📎 ${data.caption}`
-        const blocks: ContentBlock[] = [{ type: 'text', text: `${head}\n${data.files.map(itemLine).join('\n')}` }]
+        const blocks: ContentBlock[] = [{ type: 'text', text: `${head}\n${data.files.map(itemLine).join('\n')}${markdownGallery(data.files)}` }]
         for (const item of data.files) {
           const block = imageBlockFor(item)
           if (block !== undefined) blocks.push(block)
