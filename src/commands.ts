@@ -2,7 +2,9 @@
  * Slash commands: `/image <prompt>` and `/video <prompt>`.
  *
  * Default behavior is background generation with a chat push on completion
- * (matching the tool flow). Prefix the prompt with `--wait` to run
+ * (matching the tool flow). Commands are synchronous by default — media
+ * renders inline in the command card; `--bg` opts into background generation
+ * with a completion push (`--wait` kept as a backwards-compatible no-op).
  * synchronously — the command row then renders the media inline (image
  * gallery / video player with download + save-as) from the result payload.
  */
@@ -17,17 +19,24 @@ import { commitImage, commitVideo, imageMediaTypeForPath, sniffImageMediaType } 
 import { generateImage, generateVideo, type ReferenceImage } from './providers.js'
 
 const WAIT_FLAG = '--wait'
+const BG_FLAG = '--bg'
+
+/** Commands are synchronous by default: the media renders inline in the
+ *  command card (no followup push, no message impersonation). `--bg` opts
+ *  into background generation with a completion push; `--wait` is accepted
+ *  for backwards compatibility and is now the default. */
+function stripFlags(rawInput: string): { prompt: string; wait: boolean } {
+  const trimmed = rawInput.trim()
+  if (trimmed === BG_FLAG) return { prompt: '', wait: false }
+  if (trimmed.startsWith(`${BG_FLAG} `)) return { prompt: trimmed.slice(BG_FLAG.length + 1).trim(), wait: false }
+  if (trimmed === WAIT_FLAG) return { prompt: '', wait: true }
+  if (trimmed.startsWith(`${WAIT_FLAG} `)) return { prompt: trimmed.slice(WAIT_FLAG.length + 1).trim(), wait: true }
+  return { prompt: trimmed, wait: true }
+}
 
 /** File extension for a generated image media type. */
 function imageExtension(mediaType: 'image/png' | 'image/jpeg' | 'image/webp'): string {
   return mediaType === 'image/jpeg' ? 'jpg' : mediaType === 'image/webp' ? 'webp' : 'png'
-}
-
-function stripWaitFlag(rawInput: string): { prompt: string; wait: boolean } {
-  const trimmed = rawInput.trim()
-  if (trimmed === WAIT_FLAG) return { prompt: '', wait: true }
-  if (trimmed.startsWith(`${WAIT_FLAG} `)) return { prompt: trimmed.slice(WAIT_FLAG.length + 1).trim(), wait: true }
-  return { prompt: trimmed, wait: false }
 }
 
 function itemLine(item: MediaItemMeta): string {
@@ -52,11 +61,11 @@ async function referencesFromAttachments(
 export function registerMediaCommands(ctx: Context, config: Config): void {
   ctx.effect(() => ctx.commands.register({
     name: 'image',
-    description: '生成图片：/image <提示词>（可附图做图生图）。加 --wait 前缀同步等待并在命令卡片内联展示。',
+    description: '生成图片：/image <提示词>（可附图做图生图）。同步生成，图片内联展示在本条命令卡片里；加 --bg 后台生成，完成后推送。',
     input: { hint: '提示词', attachments: true },
     handler: async (invocation: CommandInvocation): Promise<CommandResult> => {
-      const { prompt, wait } = stripWaitFlag(invocation.rawInput)
-      if (prompt === '') return { kind: 'error', text: '用法：/image [--wait] <提示词>（可附参考图做图生图）' }
+      const { prompt, wait } = stripFlags(invocation.rawInput)
+      if (prompt === '') return { kind: 'error', text: '用法：/image <提示词>（可附参考图做图生图）；加 --bg 后台生成' }
       try {
         const entry = resolveModel(config.imageModels.get(), config.defaultImageModel.get(), undefined, 'image')
         const apiKey = await resolveApiKey(ctx, entry)
@@ -118,11 +127,11 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
 
   ctx.effect(() => ctx.commands.register({
     name: 'video',
-    description: '生成视频：/video <提示词>。默认后台生成完成后推送进会话；加 --wait 前缀同步等待并在命令卡片内联播放。',
+    description: '生成视频：/video <提示词>。同步等待生成完成、卡片内联播放；加 --bg 后台生成，完成后推送。',
     input: { hint: '提示词', attachments: false },
     handler: async (invocation: CommandInvocation): Promise<CommandResult> => {
-      const { prompt, wait } = stripWaitFlag(invocation.rawInput)
-      if (prompt === '') return { kind: 'error', text: '用法：/video [--wait] <提示词>' }
+      const { prompt, wait } = stripFlags(invocation.rawInput)
+      if (prompt === '') return { kind: 'error', text: '用法：/video <提示词>；加 --bg 后台生成' }
       try {
         const entry = resolveModel(config.videoModels.get(), config.defaultVideoModel.get(), undefined, 'video')
         const apiKey = await resolveApiKey(ctx, entry)
