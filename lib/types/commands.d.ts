@@ -1,11 +1,10 @@
 /**
  * Slash commands: `/image <prompt>` and `/video <prompt>`.
  *
- * Commands are synchronous: media renders inline in the command card from the
- * result payload (image gallery / video player with download + system open).
- * There is deliberately no background mode — completion pushes would have to
- * ride the user-message channel, which impersonates the user; media instead
- * shows up as the AI's own tool result.
+ * Commands return immediately (the card shows "生成中…", nothing blocks);
+ * the finished media is delivered by waking the agent, whose reply carries
+ * the markdown image lines — the picture ends up inside the AI's message
+ * (see instructions.ts). No user-bubble impersonation, no collapsed cards.
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { Config } from './config.js';
