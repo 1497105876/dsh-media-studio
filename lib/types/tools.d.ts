@@ -15,10 +15,10 @@ import type { CommandMediaPayload, MediaItemMeta, MediaModelEntry } from './type
 export declare function resolveModel(entries: readonly MediaModelEntry[], defaultId: string, requested: string | undefined, kind: 'image' | 'video'): MediaModelEntry;
 /** Resolve the API key through the credential seam, then plain environment. */
 export declare function resolveApiKey(ctx: Context, entry: MediaModelEntry): Promise<string>;
-/** Build the chat push content for finished images. The trailing instruction
- *  makes the woken agent surface the files itself: completion notices ride the
- *  followup/inject channel, which feeds the model but renders no content, so
- *  the only way media shows up in the conversation is a tool row (send_media). */
+/** Build the chat push content for finished images. The message rides the
+ *  user-bubble channel (renders inline in the conversation flow on every
+ *  client); the trailing note keeps the woken turn to a short confirmation —
+ *  no re-display, no quality check. */
 export declare function buildImagePushContent(headline: string, images: readonly MediaItemMeta[]): ContentBlock[];
 /** Build the chat push content for a finished video. */
 export declare function buildVideoPushContent(headline: string, videos: readonly MediaItemMeta[]): ContentBlock[];

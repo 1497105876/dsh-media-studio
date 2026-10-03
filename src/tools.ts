@@ -143,14 +143,14 @@ function formatVideoSummary(videos: readonly MediaItemMeta[]): string {
   return `✅ 视频生成完成：\n${videos.map(itemLine).join('\n')}`
 }
 
-/** Build the chat push content for finished images. The trailing instruction
- *  makes the woken agent surface the files itself: completion notices ride the
- *  followup/inject channel, which feeds the model but renders no content, so
- *  the only way media shows up in the conversation is a tool row (send_media). */
+/** Build the chat push content for finished images. The message rides the
+ *  user-bubble channel (renders inline in the conversation flow on every
+ *  client); the trailing note keeps the woken turn to a short confirmation —
+ *  no re-display, no quality check. */
 export function buildImagePushContent(headline: string, images: readonly MediaItemMeta[]): ContentBlock[] {
   const blocks: ContentBlock[] = [{
     type: 'text',
-    text: `${headline}\n${images.map(itemLine).join('\n')}\n\n请立即调用 send_media 工具，把上述文件展示给用户。不要预先读取、查看或检查内容（无需质检），直接展示。`,
+    text: `${headline}\n${images.map(itemLine).join('\n')}\n\n（系统自动通知：图片已在上方展示。请勿重复调用工具或检查内容，如需说明仅简短确认。）`,
   }]
   for (const item of images) {
     const block = imageBlockFor(item)
@@ -169,7 +169,7 @@ export function buildVideoPushContent(headline: string, videos: readonly MediaIt
   })
   return [{
     type: 'text',
-    text: `${headline}\n${lines.join('\n')}\n文件已保存到输出目录。\n\n请立即调用 send_media 工具，把上述文件展示给用户。不要预先读取、抽帧或检查内容（无需质检），直接展示。`,
+    text: `${headline}\n${lines.join('\n')}\n文件已保存到输出目录。\n\n（系统自动通知：视频已在上方展示。请勿重复调用工具、读取或抽帧检查内容，如需说明仅简短确认。）`,
   }]
 }
 
@@ -342,7 +342,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
           const summary = formatImageSummary(images)
           const agent = lookupAgent(ctx, owner)
           if (agent !== undefined) {
-            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, images), `图片生成完成（${entry.label || entry.id}）`)
+            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, images))
           }
           return { summary }
         },
@@ -441,7 +441,7 @@ export function registerMediaTools(ctx: Context, config: Config): void {
           const summary = formatVideoSummary(videos)
           const agent = lookupAgent(ctx, owner)
           if (agent !== undefined) {
-            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos), `视频生成完成（${entry.label || entry.id}）`)
+            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos))
           }
           return { summary }
         },
