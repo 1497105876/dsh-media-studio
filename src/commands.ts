@@ -76,7 +76,9 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           text: `${text}\n${encodeCommandPayload(mediaPayload('image', text, [item]))}`,
         }
       } catch (error) {
-        return { kind: 'error', text: error instanceof Error ? error.message : String(error) }
+        const message = error instanceof Error ? error.message : String(error)
+        const text = /abort/i.test(message) ? '已取消：生成被中断（重新提交命令会打断正在进行的生成，请等它完成）' : message
+        return { kind: 'error', text }
       }
     },
   }))
@@ -117,7 +119,9 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           text: `${text}\n${encodeCommandPayload(mediaPayload('video', text, videos))}`,
         }
       } catch (error) {
-        return { kind: 'error', text: error instanceof Error ? error.message : String(error) }
+        const message = error instanceof Error ? error.message : String(error)
+        const text = /abort/i.test(message) ? '已取消：生成被中断（重新提交命令会打断正在进行的生成，请等它完成）' : message
+        return { kind: 'error', text }
       }
     },
   }))
