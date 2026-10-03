@@ -13,7 +13,6 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Config } from './config.js'
-import { deliverMediaMessage, lookupAgent, startMediaJob } from './jobs.js'
 import {
   commitImage, commitVideo, describeLocalFile, readReferenceImage, resolveOutputDir,
   sniffImageMediaType, imageMediaTypeForPath,
@@ -143,36 +142,6 @@ function formatVideoSummary(videos: readonly MediaItemMeta[]): string {
   return `✅ 视频生成完成：\n${videos.map(itemLine).join('\n')}`
 }
 
-/** Build the chat push content for finished images. The message rides the
- *  user-bubble channel (renders inline in the conversation flow on every
- *  client); the trailing note keeps the woken turn to a short confirmation —
- *  no re-display, no quality check. */
-export function buildImagePushContent(headline: string, images: readonly MediaItemMeta[]): ContentBlock[] {
-  const blocks: ContentBlock[] = [{
-    type: 'text',
-    text: `${headline}\n${images.map(itemLine).join('\n')}\n\n（系统自动通知：图片已在上方展示。请勿重复调用工具或检查内容，如需说明仅简短确认。）`,
-  }]
-  for (const item of images) {
-    const block = imageBlockFor(item)
-    if (block !== undefined) blocks.push(block)
-  }
-  return blocks
-}
-
-/** Build the chat push content for a finished video. */
-export function buildVideoPushContent(headline: string, videos: readonly MediaItemMeta[]): ContentBlock[] {
-  const lines = videos.map(item => {
-    const sizeMb = (item.bytes / (1024 * 1024)).toFixed(1)
-    return item.path === undefined
-      ? `- ${item.name}（${sizeMb} MB）`
-      : `- \`${item.path}\`（${sizeMb} MB）`
-  })
-  return [{
-    type: 'text',
-    text: `${headline}\n${lines.join('\n')}\n文件已保存到输出目录。\n\n（系统自动通知：视频已在上方展示。请勿重复调用工具、读取或抽帧检查内容，如需说明仅简短确认。）`,
-  }]
-}
-
 interface GenerationContext {
   ctx: Context
   config: Config
@@ -267,8 +236,8 @@ export function registerMediaTools(ctx: Context, config: Config): void {
   ctx.tools.register(defineTool({
     name: 'generate_image',
     description:
-      '生成图片并在对话中展示。支持文生图与图生图（reference_images 传本地路径或 https URL）。'
-      + '默认同步生成：图片直接出现在对话中。传 run_in_background: true 则后台生成，完成后推送。',
+      '生成图片并在对话中展示（同步生成，图片直接出现在对话中）。'
+      + '支持文生图与图生图（reference_images 传本地路径或 https URL）。',
     parameters: {
       prompt: { type: 'string', required: true, description: '图片描述 / 编辑指令（中文英文均可）' },
       model: { type: 'string', description: '生图模型条目 id（见插件配置 imageModels）；省略用默认模型' },
@@ -279,7 +248,6 @@ export function registerMediaTools(ctx: Context, config: Config): void {
         items: { type: 'string' },
         description: '图生图参考图：本地文件路径、https URL 或 data URI。必须是字符串数组，即使只有一张：["C:\\a.png"]',
       },
-      run_in_background: { type: 'boolean', description: '默认 false：同步生成并直接返回图片；true 则后台生成，完成后推送进会话' },
     },
     output: {
       schema: IMAGE_VALUE_SCHEMA,
@@ -326,43 +294,18 @@ export function registerMediaTools(ctx: Context, config: Config): void {
         model: entry.id,
         provider: entry.provider as MediaProvider,
       }
-      // 图片默认同步：工具结果直接携带图片（AI 的回合内平铺展示，不折叠、
-      // 不冒充用户）；只有模型显式传 run_in_background: true 才走后台+推送。
-      if (args.run_in_background !== true) {
-        const images = await runImageGeneration(gc, entry, apiKey, { ...params, signal: exec.signal })
-        return { ...base, status: 'completed' as const, images }
-      }
-      const owner = exec.agent?.id
-      const jobId = startMediaJob(ctx, {
-        kind: 'media-image',
-        label: params.prompt,
-        owner,
-        work: async (job, signal) => {
-          job.updateProgress(`generating image with ${entry.id}…`)
-          const images = await runImageGeneration(gc, entry, apiKey, { ...params, signal })
-          const summary = formatImageSummary(images)
-          const agent = lookupAgent(ctx, owner)
-          if (agent !== undefined) {
-            deliverMediaMessage(agent, buildImagePushContent(`🖼️ 图片生成完成（${entry.label || entry.id}）`, images))
-          }
-          return { summary }
-        },
-      })
-      return {
-        ...base,
-        status: 'started' as const,
-        ...(jobId === undefined ? {} : { jobId }),
-        images: [],
-      }
+      // 图片视频一律同步生成：工具结果直接携带媒体（AI 的回合内平铺展示，
+      // 不折叠、不冒充用户）；后台推送机制已整体移除。
+      const images = await runImageGeneration(gc, entry, apiKey, { ...params, signal: exec.signal })
+      return { ...base, status: 'completed' as const, images }
     },
   }))
 
   ctx.tools.register(defineTool({
     name: 'generate_video',
     description:
-      '生成视频并推送到对话。支持文生视频、首尾帧（keyframe 模式 + first_frame/last_frame）与参考图（reference 模式）。'
-      + '默认后台生成（run_in_background: true）：立即返回任务句柄，视频生成通常需要几分钟，完成后推送到会话；'
-      + '设为 false 则同步等待并在工具结果里返回视频文件。',
+      '生成视频并在对话中展示（同步生成，通常需要几分钟，视频直接出现在对话中）。'
+      + '支持文生视频、首尾帧（keyframe 模式 + first_frame/last_frame）与参考图（reference 模式）。',
     parameters: {
       prompt: { type: 'string', required: true, description: '视频描述（reference 模式可用 <Picture 1> 指代参考图）' },
       model: { type: 'string', description: '视频模型条目 id（见插件配置 videoModels）；省略用默认模型' },
@@ -373,7 +316,6 @@ export function registerMediaTools(ctx: Context, config: Config): void {
       first_frame: { type: 'string', description: 'keyframe 模式：首帧图片路径或 https URL' },
       last_frame: { type: 'string', description: 'keyframe 模式：尾帧图片路径或 https URL' },
       reference_images: { type: 'array', items: { type: 'string' }, description: 'reference 模式的参考图。必须是字符串数组，即使只有一张：["C:\\a.png"]' },
-      run_in_background: { type: 'boolean', description: '默认 true：后台生成完成后推送进会话；false：同步等待' },
     },
     output: {
       schema: VIDEO_VALUE_SCHEMA,
@@ -423,36 +365,9 @@ export function registerMediaTools(ctx: Context, config: Config): void {
         model: entry.id,
         provider: entry.provider as MediaProvider,
       }
-      if (args.run_in_background === false) {
-        const videos = await runVideoGeneration(gc, entry, apiKey, { ...params, signal: exec.signal })
-        return { ...base, status: 'completed' as const, videos }
-      }
-      const owner = exec.agent?.id
-      const jobId = startMediaJob(ctx, {
-        kind: 'media-video',
-        label: params.prompt,
-        owner,
-        work: async (job, signal) => {
-          job.updateProgress(`generating video with ${entry.id}…`)
-          const videos = await runVideoGeneration(gc, entry, apiKey, {
-            ...params,
-            signal,
-            onProgress: line => job.updateProgress(line),
-          })
-          const summary = formatVideoSummary(videos)
-          const agent = lookupAgent(ctx, owner)
-          if (agent !== undefined) {
-            deliverMediaMessage(agent, buildVideoPushContent(`🎬 视频生成完成（${entry.label || entry.id}）`, videos))
-          }
-          return { summary }
-        },
-      })
-      return {
-        ...base,
-        status: 'started' as const,
-        ...(jobId === undefined ? {} : { jobId }),
-        videos: [],
-      }
+      // 视频同样同步生成（等几分钟），结果内联展示。
+      const videos = await runVideoGeneration(gc, entry, apiKey, { ...params, signal: exec.signal })
+      return { ...base, status: 'completed' as const, videos }
     },
   }))
 
