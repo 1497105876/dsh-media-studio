@@ -47,9 +47,7 @@ export type MediaResultMeta = {
 /** Canonical tool value: image generation. */
 export interface ImageGenerationValue {
     kind: 'image-generation';
-    status: 'started' | 'completed';
-    /** Present only for the background branch (`run_in_background: true`). */
-    jobId?: string;
+    status: 'completed';
     prompt: string;
     model: string;
     provider: MediaProvider;
@@ -58,8 +56,7 @@ export interface ImageGenerationValue {
 /** Canonical tool value: video generation. */
 export interface VideoGenerationValue {
     kind: 'video-generation';
-    status: 'started' | 'completed';
-    jobId?: string;
+    status: 'completed';
     prompt: string;
     model: string;
     provider: MediaProvider;
@@ -71,20 +68,3 @@ export interface MediaSendValue {
     caption?: string;
     files: MediaItemMeta[];
 }
-/** JSON payload appended to `/image` `/video` command results for the rich command row. */
-export interface CommandMediaPayload {
-    v: 1;
-    kind: 'image' | 'video';
-    text: string;
-    items: MediaItemMeta[];
-}
-/** Marker framing the command payload inside `CommandResult.text`. */
-export declare const COMMAND_PAYLOAD_OPEN = "\u27E8media-studio\u27E9";
-/** Marker framing the command payload inside `CommandResult.text`. */
-export declare const COMMAND_PAYLOAD_CLOSE = "\u27E8/media-studio\u27E9";
-/** Frame one payload for `CommandResult.text`. */
-export declare function encodeCommandPayload(payload: CommandMediaPayload): string;
-/** Recover the payload from a recorded `CommandNode.outcome.text`, if present. */
-export declare function decodeCommandPayload(text: string | undefined): CommandMediaPayload | undefined;
-/** Strip the payload marker from a command result so fallback rows stay readable. */
-export declare function stripCommandPayload(text: string | undefined): string;

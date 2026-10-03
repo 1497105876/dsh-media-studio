@@ -1,16 +1,11 @@
-# @gw/dsh-media-studio — DSH media generation bundle
-# 挂载插件行：所有配置项的默认值由插件 Config schema 提供（见 README）。
-# 想覆盖默认值时在 config: 下按整行替换（patch 语义是整值替换，不做深合并）。
+# @gw/dsh-media-studio bundle layer: one row carries both halves of the plugin.
+#
+# `id: media-studio` is the profile entry id — it is also the settings namespace
+# the browser half edits through ctx.configForms, so keep it stable.
+#
+# All configuration defaults live in the plugin's Config schema (see README);
+# to override them, add a `config:` section here or in your own override layer
+# (patch semantics are whole-value replacement, no deep merge).
 - insert:
     - id: media-studio
       name: '@gw/dsh-media-studio'
-      config:
-        defaultImageModel: agnes-image
-        defaultVideoModel: agnes-video
-        outputDir: '~/.dsh/media-studio'
-        autoSave: true
-        imageResolution: 2K
-        imageAspectRatio: '16:9'
-        videoSeconds: 5
-        videoSize: 720P
-        videoAspectRatio: '16:9'

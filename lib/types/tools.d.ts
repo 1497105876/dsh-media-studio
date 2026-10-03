@@ -9,12 +9,10 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { Config } from './config.js';
-import type { CommandMediaPayload, MediaItemMeta, MediaModelEntry } from './types.js';
+import type { MediaModelEntry } from './types.js';
 /** Resolve a model entry by id (falling back to the configured default). */
 export declare function resolveModel(entries: readonly MediaModelEntry[], defaultId: string, requested: string | undefined, kind: 'image' | 'video'): MediaModelEntry;
 /** Resolve the API key through the credential seam, then plain environment. */
 export declare function resolveApiKey(ctx: Context, entry: MediaModelEntry): Promise<string>;
 /** Register the three media tools. */
 export declare function registerMediaTools(ctx: Context, config: Config): void;
-/** Payload projection shared with the slash commands. */
-export declare function mediaPayload(kind: 'image' | 'video', text: string, items: readonly MediaItemMeta[]): CommandMediaPayload;

@@ -3,7 +3,7 @@
  * `send_media` (packages/client/ui-tool keyed tool view, wire key = tool
  * name). The stock generic row flattens image blocks to JSON, so these rows
  * render the persisted `result.meta` projection instead: inline gallery /
- * video player with download and save-as.
+ * video player with download and system open.
  */
 import type { CSSProperties, ReactNode } from 'react'
 import { MediaItemGrid, parseMediaMeta } from './media.tsx'

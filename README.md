@@ -20,7 +20,7 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 | 文生图 / 图生图 | `generate_image`：本地路径、https URL、data URI 均可作参考图 |
 | 文生视频 | `generate_video`：支持首尾帧（keyframe）与参考图（reference）两种模式 |
 | 发送本地媒体 | `send_media`：把已有图片 / 视频文件以画廊 / 文件卡片形式进入会话 |
-| 斜杠命令 | `/image`、`/video`，同步生成并在命令卡片内联展示（可附图做图生图） |
+| 斜杠命令 | `/image`、`/video`，异步生成，完成后 AI 把图片 / 视频作为消息发到会话（可附图做图生图） |
 | 富渲染 | 工具行 / 命令行内联画廊与视频播放器，支持下载、灯箱查看、系统默认应用打开 |
 | 自动保存 | 生成结果写进输出目录（默认 `~/.dsh/media-studio`，`~` 展开到用户主目录；相对路径基于会话工作目录） |
 | 凭据安全 | API key 走 `credential-ref`（环境变量名），永不写进配置文件 |
@@ -85,8 +85,8 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 ## 斜杠命令
 
 ```
-/image <提示词>            # 同步生成，图片内联在命令卡片里展示（可附图做图生图）
-/video <提示词>            # 同步等待生成完成（通常几分钟），卡片内联播放
+/image <提示词>            # 异步生成，完成后 AI 把图片作为消息发到会话（可附图做图生图）
+/video <提示词>            # 异步生成（通常几分钟），完成后 AI 把视频作为消息发到会话
 ```
 
 ## 配置
@@ -121,13 +121,12 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 src/
   index.ts            host 半入口：export const name / inject / Config / apply
   tools.ts            三个媒体工具（schema / render / presentationMeta / execute）
-  commands.ts         /image /video 斜杠命令（同步生成，内联展示）
+  commands.ts         /image /video 斜杠命令（异步生成，完成后经 notice+followup 唤醒 AI 发图）
   providers.ts        agnes / openai / openai-videos 三种适配器
   media.ts            落盘、附件提交、参考图读取、媒体类型嗅探
   config.ts           schemastery 配置（volatile，卡片即时生效）
   client/             浏览器半（React）
     tool-row.tsx        工具行：内联画廊 / 视频播放器
-    command-row.tsx     /image /video 命令行
     gallery.tsx         消息图片画廊（替换 stock gallery）
     media.tsx           画廊 / 灯箱 / 播放器 / 下载 / 系统打开
     native-open.ts      宿主原生打开通道（系统默认应用）
