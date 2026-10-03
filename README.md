@@ -6,8 +6,8 @@
 
 在 dsh（DeepSeek Harness）聊天里**直接生成图片 / 视频**并发送到会话的插件。
 模型侧拿到 `generate_image` / `generate_video` / `send_media` 三个工具，人侧拿到
-内联画廊、可播放的视频卡片，支持下载与用系统默认应用打开；长耗时生成默认走
-后台任务，完成后自动把结果推送回会话。
+内联画廊、可播放的视频卡片，支持下载与用系统默认应用打开；生成完成后媒体
+直接内联在对话中展示（AI 回合的工具结果 / 命令卡片）。
 
 生成后端可插拔：内置 **Agnes**（免费额度，图生图 / 首尾帧 / 参考图视频）与
 **OpenAI 兼容**两种适配器，预设硅基流动、阿里百炼、Gemini（OpenAI 兼容端点）、
@@ -20,8 +20,7 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 | 文生图 / 图生图 | `generate_image`：本地路径、https URL、data URI 均可作参考图 |
 | 文生视频 | `generate_video`：支持首尾帧（keyframe）与参考图（reference）两种模式 |
 | 发送本地媒体 | `send_media`：把已有图片 / 视频文件以画廊 / 文件卡片形式进入会话 |
-| 斜杠命令 | `/image`、`/video`，加 `--wait` 前缀同步等待并在命令卡片内联展示 |
-| 后台生成 | 默认走 `ctx.jobs` 后台任务，立即返回任务句柄，完成后自动推送 |
+| 斜杠命令 | `/image`、`/video`，同步生成并在命令卡片内联展示（可附图做图生图） |
 | 富渲染 | 工具行 / 命令行内联画廊与视频播放器，支持下载、灯箱查看、系统默认应用打开 |
 | 自动保存 | 生成结果写进输出目录（默认 `~/.dsh/media-studio`，`~` 展开到用户主目录；相对路径基于会话工作目录） |
 | 凭据安全 | API key 走 `credential-ref`（环境变量名），永不写进配置文件 |
@@ -86,10 +85,8 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 ## 斜杠命令
 
 ```
-/image <提示词>            # 后台生成，完成后推送
-/image --wait <提示词>      # 同步等待，命令卡片内联展示（可附图做图生图）
-/video <提示词>            # 后台生成（通常几分钟），完成后推送
-/video --wait <提示词>      # 同步等待，卡片内联播放
+/image <提示词>            # 同步生成，图片内联在命令卡片里展示（可附图做图生图）
+/video <提示词>            # 同步等待生成完成（通常几分钟），卡片内联播放
 ```
 
 ## 配置
@@ -124,8 +121,7 @@ provider 三选一：`agnes`（Agnes 专有 quirks）、`openai`（OpenAI 兼容
 src/
   index.ts            host 半入口：export const name / inject / Config / apply
   tools.ts            三个媒体工具（schema / render / presentationMeta / execute）
-  commands.ts         /image /video 斜杠命令
-  jobs.ts             ctx.jobs 后台任务 + 完成通知（followup / inject）
+  commands.ts         /image /video 斜杠命令（同步生成，内联展示）
   providers.ts        agnes / openai / openai-videos 三种适配器
   media.ts            落盘、附件提交、参考图读取、媒体类型嗅探
   config.ts           schemastery 配置（volatile，卡片即时生效）

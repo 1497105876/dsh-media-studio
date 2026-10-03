@@ -1,12 +1,11 @@
 /**
  * Slash commands: `/image <prompt>` and `/video <prompt>`.
  *
- * Default behavior is background generation with a chat push on completion
- * (matching the tool flow). Commands are synchronous by default — media
- * renders inline in the command card; `--bg` opts into background generation
- * with a completion push (`--wait` kept as a backwards-compatible no-op).
- * synchronously — the command row then renders the media inline (image
- * gallery / video player with download + save-as) from the result payload.
+ * Commands are synchronous: media renders inline in the command card from the
+ * result payload (image gallery / video player with download + system open).
+ * There is deliberately no background mode — completion pushes would have to
+ * ride the user-message channel, which impersonates the user; media instead
+ * shows up as the AI's own tool result.
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { Config } from './config.js';
