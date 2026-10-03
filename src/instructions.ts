@@ -9,12 +9,15 @@
  * that a standing rule instead of a per-call suggestion.
  */
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { boundContextSummary, createUserMessage } from '@deepseek-ai/dsh-llm'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    /** Standing display rules from this plugin (queued context, never rendered). */
-    'media-studio': { kind: 'media-studio' } & { form: 'instructions' }
+    /** Producer messages from this plugin: never rendered, model-facing only. */
+    'media-studio': { kind: 'media-studio' } & (
+      | { form: 'instructions' }
+      | { form: 'notice'; summary: string }
+    )
   }
 }
 
@@ -48,5 +51,27 @@ export function ensureMediaInstructions(
     agent.inject(message)
   } catch {
     // Agent disposed between lookup and inject; the per-call guidance still applies.
+  }
+}
+
+/**
+ * Deliver a background-completion notice and wake the agent. The notice
+ * itself renders nothing; the woken reply carries the markdown media lines
+ * (per MEDIA_DISPLAY_INSTRUCTIONS), so the picture shows up inside the AI's
+ * message — never as a user-bubble impersonation, never folded away.
+ */
+export function deliverMediaCompletion(agent: Agent, text: string, summary: string): void {
+  const message = createUserMessage({
+    content: [{ type: 'text', text }],
+    source: { kind: 'media-studio', form: 'notice', summary: boundContextSummary(summary) },
+  })
+  try {
+    agent.followup(message)
+  } catch {
+    try {
+      agent.inject(message)
+    } catch {
+      // Agent disposed; nothing else to deliver to.
+    }
   }
 }
