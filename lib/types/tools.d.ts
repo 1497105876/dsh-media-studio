@@ -5,7 +5,7 @@
  * content from it (`output.render` — image blocks are legal tool-result
  * content), and projects replayable UI metadata (`output.presentationMeta`)
  * that the web client half turns into an inline gallery / video player with
- * download and save-as actions.
+ * download actions.
  */
 import type { Context } from '@deepseek-ai/cordis';
 import type { ContentBlock } from '@deepseek-ai/dsh-llm';

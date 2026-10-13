@@ -5,10 +5,10 @@
  *
  * Contributes:
  *  - `tool.call.toolview` rows for the three media tools (inline gallery /
- *    video player with download + save-as);
+ *    video player with download);
  *  - `conversation.chat.commandview` rows for `/image` `/video` (rich rows for
  *    `--wait` results);
- *  - a `conversation.message.images` fill that adds download + save-as to the
+ *  - a `conversation.message.images` fill that adds download to the
  *    regular chat image gallery;
  *  - the plugin's full configuration card on its Plugins-page detail
  *    (`plugins.bundle.config`): model entries + keys + defaults, over

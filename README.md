@@ -128,6 +128,8 @@ src/
   jobs.ts             ctx.jobs 后台任务 + 完成通知（followup / inject）
   providers.ts        agnes / openai / openai-videos 三种适配器
   media.ts            落盘、附件提交、参考图读取、媒体类型嗅探
+  presets.ts          内置模型预设（Agnes）
+  types.ts            两半共享的类型与命令 payload 编解码
   config.ts           schemastery 配置（volatile，卡片即时生效）
   client/             浏览器半（React）
     tool-row.tsx        工具行：内联画廊 / 视频播放器

@@ -1,7 +1,7 @@
 /**
  * `conversation.message.images` fill: replaces the stock message gallery so
  * every chat image (generated media, `send_media` results, user uploads)
- * gains direct download and save-as actions alongside the inline preview.
+ * gains direct download actions alongside the inline preview.
  * The component honors the slot's owner contract (`MessageImagesOwnerProps`:
  * images + session-authorized loader + alignment), implemented here without
  * importing other feature plugins' components.

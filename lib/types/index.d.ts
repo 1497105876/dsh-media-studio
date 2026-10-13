@@ -7,7 +7,7 @@
  * Generated media is auto-saved to the output directory and delivered to the
  * chat (inline image gallery; video file + playable path), while the browser
  * half (`./client`) renders rich tool rows and command rows with preview,
- * download, and save-as actions.
+ * download actions.
  */
 import type { Context } from '@deepseek-ai/cordis';
 import { Config, type Config as MediaStudioConfig } from './config.js';
