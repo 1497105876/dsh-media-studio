@@ -4,7 +4,8 @@
  *
  * Rendering rules follow the DSH client contracts (packages/client/ui-tool
  * `tool.call.toolview`, ui-chat `conversation.chat.commandview` and
- * `conversation.message.images`): components receive session-authorized image
+ * `conversation.chat.message.images` / `conversation.chat.user.images`):
+ * components receive session-authorized image
  * loaders and node data through props and never reach into services.
  *
  * Viewer experience: images open in a lightbox with name / dimensions / size
@@ -261,8 +262,8 @@ export interface MediaGalleryProps {
 
 /**
  * Chat image gallery with inline preview (lightbox) and direct download —
- * used both as the `conversation.message.images` fill and inside the
- * custom tool / command rows.
+ * used both as the `conversation.chat.message.images` /
+ * `conversation.chat.user.images` fill and inside the custom tool / command rows.
  */
 export function MediaGallery({ images, loadImage, align = 'start', compact = false, thumbnail = false }: MediaGalleryProps): ReactNode {
   const [opened, setOpened] = useState<{ url: string; name: string; size?: number } | undefined>(undefined)

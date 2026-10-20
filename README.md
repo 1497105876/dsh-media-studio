@@ -1,7 +1,7 @@
 # dsh-media-studio
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![dsh](https://img.shields.io/badge/dsh-0.2.0--rc.2-4b8bbe)](https://github.com/deepseek-ai/deepseek-harness)
+[![dsh](https://img.shields.io/badge/dsh-0.2.1--rc.2-4b8bbe)](https://github.com/deepseek-ai/deepseek-harness)
 [![node](https://img.shields.io/badge/node-%3E%3D22.19-339933)](https://nodejs.org)
 
 在 dsh（DeepSeek Harness）聊天里**直接生成图片 / 视频**并发送到会话的插件。
@@ -29,7 +29,7 @@ Sora 2 等条目，也可以在配置里加任意 `baseURL + model + apiKeyEnv` 
 
 ## 安装
 
-要求 dsh `0.2.0-rc.2`、Node `>=22.19.0`。
+要求 dsh `0.2.1-rc.2` 及以上 0.2.x、Node `>=22.19.0`。
 
 打开 dsh 的 **插件** 页，点右上角 **「+ 添加插件」**，输入 GitHub 地址：
 
