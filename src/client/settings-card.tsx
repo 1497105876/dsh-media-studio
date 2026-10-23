@@ -638,7 +638,7 @@ export function MediaStudioConfigCard(props: { ctx: any, view?: string }): JSX.E
         <Section title="默认参数"
           desc="这里配置的只是默认值：生成时在对话里明确指定了参数（模型、分辨率、画幅、时长等），以对话指定的为准。">
           <ValueField id="ms-output-dir" label="输出目录"
-            hint="支持 ~ 开头（展开到用户主目录），默认 ~/.dsh/media-studio；相对路径基于会话工作目录"
+            hint="支持 ~ 开头（展开到用户主目录）；默认按 profile 隔离：~/.dsh/profiles/<profile>/media-studio，未识别 profile 时 ~/.dsh/media-studio；相对路径基于会话工作目录"
             text={param('outputDir')} disabled={disabled}
             onEdit={text => setParam('outputDir', text)} />
           <SelectRow id="ms-autosave" label="自动保存"

@@ -33,8 +33,9 @@ export interface Config {
   defaultVideoModel: Volatile<string>
   /**
    * Auto-save directory for generated media. `~` expands to the user home
-   * (default `~/.dsh/media-studio`); relative paths resolve against the
-   * session working directory.
+   * (the untouched default `~/.dsh/media-studio` resolves per profile to
+   * `~/.dsh/profiles/<profile>/media-studio`); relative paths resolve against
+   * the session working directory.
    */
   outputDir: Volatile<string>
   /** Write every generated image to `outputDir` (videos always land there). */
