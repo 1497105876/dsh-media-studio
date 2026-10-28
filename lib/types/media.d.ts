@@ -19,8 +19,6 @@ export declare function readReferenceImage(input: string): Promise<ReferenceImag
  * OS account is; relative paths resolve against the session working directory.
  */
 export declare function resolveOutputDir(outputDir: string, cwd: string | undefined): string;
-/** Timestamped, collision-resistant media file name. */
-export declare function uniqueMediaName(prefix: string, extension: string): string;
 export interface CommitOptions {
     name: string;
     bytes: Uint8Array;

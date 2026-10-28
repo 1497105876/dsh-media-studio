@@ -5,11 +5,11 @@
  *
  * Contributes:
  *  - `tool.call.toolview` rows for the three media tools (inline gallery /
- *    video player with download + save-as);
+ *    video player with download);
  *  - `conversation.chat.commandview` rows for `/image` `/video` (rich rows for
  *    `--wait` results);
- *  - a `conversation.message.images` fill that adds download + save-as to the
- *    regular chat image gallery;
+ *  - a `conversation.chat.message.images` / `conversation.chat.user.images`
+ *    fill that adds download to the regular chat image gallery;
  *  - the plugin's full configuration card on its Plugins-page detail
  *    (`plugins.bundle.config`): model entries + keys + defaults, over
  *    configForms scope and the official credential seam.
@@ -43,9 +43,14 @@ export function apply(ctx: Context): void {
   }
   // Replacing the stock gallery cell is the documented "reuse the cell to
   // replace its presentation" path; the fallback gallery renders when this
-  // entry loses the priority election.
-  ctx.slots.inject('conversation.message.images', () => ctx.slots.register(
-    { name: 'conversation.message.images', priority: -1 }, MessageMediaImages))
+  // entry loses the priority election. dsh 0.2.1 起消息图拆成两个 slot：
+  // `conversation.chat.message.images`（模型输出的图）与
+  // `conversation.chat.user.images`（用户上传的图，含提交中的本地回显预览），
+  // owner 契约完全相同，两个都挂，保持「会话里每张图都能直接下载」。
+  for (const name of ['conversation.chat.message.images', 'conversation.chat.user.images'] as const) {
+    ctx.slots.inject(name, () => ctx.slots.register(
+      { name, priority: -1 }, MessageMediaImages))
+  }
 
   registerConfigCard(ctx)
 }

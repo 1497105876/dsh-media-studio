@@ -4,7 +4,7 @@
  * Default behavior is background generation with a chat push on completion
  * (matching the tool flow). Prefix the prompt with `--wait` to run
  * synchronously — the command row then renders the media inline (image
- * gallery / video player with download + save-as) from the result payload.
+ * gallery / video player with download) from the result payload.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'

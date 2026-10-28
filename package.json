@@ -1,6 +1,6 @@
 {
   "name": "@gw/dsh-media-studio",
-  "version": "0.5.4",
+  "version": "2.1.1001",
   "description": "DeepSeek Harness plugin: generate and send images/videos directly in the chat. Agnes / OpenAI-compatible providers, preset models, custom API models, background generation with chat push, inline preview with download and native open.",
   "keywords": [
     "dsh",
@@ -14,7 +14,7 @@
   "type": "module",
   "engines": {
     "node": ">=22.19.0",
-    "dsh": "0.2.0-rc.2"
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
   },
   "repository": {
     "type": "git",
@@ -62,29 +62,29 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-agent": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-attachment": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-commands": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-credentials": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-jobs": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-llm": "~0.2.0-rc.2",
-    "@deepseek-ai/dsh-tools": "~0.2.0-rc.2"
+    "@deepseek-ai/dsh-agent": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-commands": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-credentials": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-jobs": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "~0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "~0.2.1-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-agent": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-attachment": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-tool": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-commands": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-credentials": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-jobs": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-chat": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-tool": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-commands": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-jobs": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@types/node": "^22.19.0",
     "@types/react": "~18.3.1",
     "esbuild": "~0.25.0",
