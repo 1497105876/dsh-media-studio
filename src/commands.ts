@@ -10,7 +10,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
 import type { Config } from './config.js'
 import { deliverMediaMessage, startMediaJob } from './jobs.js'
-import { resolveOutputDir, toDataUri } from './media.js'
+import { resolveOutputDir, toDataUri, formatDateStamp } from './media.js'
 import { resolveApiKey, resolveModel, buildImagePushContent, buildVideoPushContent, mediaPayload } from './tools.js'
 import { encodeCommandPayload, type MediaItemMeta } from './types.js'
 import { commitImage, commitVideo, imageMediaTypeForPath, sniffImageMediaType } from './media.js'
@@ -75,7 +75,8 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
             signal: invocation.signal,
             timeoutMs: config.requestTimeoutSec.get() * 1000,
           })
-          const name = `image-${entry.id}-${Date.now()}.${imageExtension(generated.mediaType)}`
+          const now = new Date()
+          const name = `image-${entry.id}-${formatDateStamp(now)}-${now.getTime()}.${imageExtension(generated.mediaType)}`
           const item = await commitImage(ctx.attachments, {
             name,
             bytes: generated.bytes,
@@ -97,7 +98,8 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
           work: async (job, signal) => {
             job.updateProgress(`generating image with ${entry.id}…`)
             const generated = await generateImage(entry, apiKey, { ...params, signal, timeoutMs: config.requestTimeoutSec.get() * 1000 })
-            const name = `image-${entry.id}-${Date.now()}.${imageExtension(generated.mediaType)}`
+            const now = new Date()
+            const name = `image-${entry.id}-${formatDateStamp(now)}-${now.getTime()}.${imageExtension(generated.mediaType)}`
             const item = await commitImage(ctx.attachments, {
               name,
               bytes: generated.bytes,
@@ -145,8 +147,9 @@ export function registerMediaCommands(ctx: Context, config: Config): void {
             pollTimeoutMs: config.videoPollTimeoutSec.get() * 1000,
             ...(onProgress === undefined ? {} : { onProgress }),
           })
+          const now = new Date()
           return [await commitVideo({
-            name: `video-${entry.id}-${Date.now()}.mp4`,
+            name: `video-${entry.id}-${formatDateStamp(now)}-${now.getTime()}.mp4`,
             bytes: generated.bytes,
             outputDir,
             autoSave: true,

@@ -15,7 +15,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Config } from './config.js'
 import { deliverMediaMessage, lookupAgent, startMediaJob } from './jobs.js'
 import {
-  commitImage, commitVideo, describeLocalFile, readReferenceImage, resolveOutputDir,
+  commitImage, commitVideo, describeLocalFile, readReferenceImage, resolveOutputDir, formatDateStamp,
   sniffImageMediaType, imageMediaTypeForPath,
 } from './media.js'
 import { generateImage, generateVideo, type ReferenceImage } from './providers.js'
@@ -201,7 +201,8 @@ async function runImageGeneration(
     signal: params.signal,
     timeoutMs: gc.config.requestTimeoutSec.get() * 1000,
   })
-  const name = `image-${entry.id}-${Date.now()}.${generated.mediaType === 'image/jpeg' ? 'jpg' : generated.mediaType === 'image/webp' ? 'webp' : 'png'}`
+  const now = new Date()
+  const name = `image-${entry.id}-${formatDateStamp(now)}-${now.getTime()}.${generated.mediaType === 'image/jpeg' ? 'jpg' : generated.mediaType === 'image/webp' ? 'webp' : 'png'}`
   const item = await commitImage(gc.ctx.attachments, {
     name,
     bytes: generated.bytes,
@@ -244,8 +245,9 @@ async function runVideoGeneration(
     pollTimeoutMs: gc.config.videoPollTimeoutSec.get() * 1000,
     ...(params.onProgress === undefined ? {} : { onProgress: params.onProgress }),
   })
+  const now = new Date()
   const item = await commitVideo({
-    name: `video-${entry.id}-${Date.now()}.mp4`,
+    name: `video-${entry.id}-${formatDateStamp(now)}-${now.getTime()}.mp4`,
     bytes: generated.bytes,
     outputDir: gc.outputDir,
     autoSave: true,

@@ -11,6 +11,22 @@ import type { ReferenceImage } from './providers.js'
 import type { MediaItemMeta } from './types.js'
 import { profileScopedDefault } from './profile-dir.js'
 
+/**
+ * 把 Date 格式化为紧凑、人类可读的本地时间戳 `YYMMDDHHmmss`。
+ * 例：2026-10-28 13:14:01（Asia/Shanghai）→ "261028131401"。
+ * 用作生成媒体文件名的可读前缀。
+ */
+export function formatDateStamp(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const yy = String(date.getFullYear()).slice(-2)
+  const MM = pad(date.getMonth() + 1)
+  const dd = pad(date.getDate())
+  const HH = pad(date.getHours())
+  const mm = pad(date.getMinutes())
+  const ss = pad(date.getSeconds())
+  return `${yy}${MM}${dd}${HH}${mm}${ss}`
+}
+
 /** Extensions the attachment service accepts as raster images. */
 const IMAGE_EXTENSIONS: Readonly<Record<string, ImageMediaType>> = {
   '.png': 'image/png',
