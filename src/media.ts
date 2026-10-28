@@ -9,6 +9,7 @@ import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import type { AttachmentStore, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ReferenceImage } from './providers.js'
 import type { MediaItemMeta } from './types.js'
+import { profileScopedDefault } from './profile-dir.js'
 
 /** Extensions the attachment service accepts as raster images. */
 const IMAGE_EXTENSIONS: Readonly<Record<string, ImageMediaType>> = {
@@ -60,15 +61,29 @@ export async function readReferenceImage(input: string): Promise<ReferenceImage>
 }
 
 /**
+ * The untouched schema default for `outputDir`; treated as a sentinel so the
+ * effective directory can stay profile-aware without mutating config.
+ */
+export const LEGACY_DEFAULT_OUTPUT_DIR = '~/.dsh/media-studio'
+
+/**
  * Resolve the auto-save directory. `~` / `~/...` expands to the user home, so
- * the default `~/.dsh/media-studio` lands next to the dsh profile whatever the
- * OS account is; relative paths resolve against the session working directory.
+ * the default lands under the dsh home whatever the OS account is; relative
+ * paths resolve against the session working directory.
+ *
+ * The untouched default is profile-aware: under a named DSH profile it
+ * resolves to `~/.dsh/profiles/<profile>/media-studio`, so desktop / web /
+ * custom profiles each keep their own generated media. Explicitly configured
+ * values always pass through unchanged.
  */
 export function resolveOutputDir(outputDir: string, cwd: string | undefined): string {
   const raw = outputDir.trim()
-  const expanded = raw === '~' || raw.startsWith('~/') || raw.startsWith('~\\')
-    ? join(homedir(), raw.slice(1))
+  const effective = raw === LEGACY_DEFAULT_OUTPUT_DIR
+    ? profileScopedDefault('media-studio', { moduleUrl: import.meta.url }) ?? raw
     : raw
+  const expanded = effective === '~' || effective.startsWith('~/') || effective.startsWith('~\\')
+    ? join(homedir(), effective.slice(1))
+    : effective
   return isAbsolute(expanded) ? expanded : resolve(cwd ?? process.cwd(), expanded)
 }
 

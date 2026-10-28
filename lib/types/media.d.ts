@@ -14,9 +14,19 @@ export declare function toDataUri(bytes: Uint8Array, mediaType: string): string;
  */
 export declare function readReferenceImage(input: string): Promise<ReferenceImage>;
 /**
+ * The untouched schema default for `outputDir`; treated as a sentinel so the
+ * effective directory can stay profile-aware without mutating config.
+ */
+export declare const LEGACY_DEFAULT_OUTPUT_DIR = "~/.dsh/media-studio";
+/**
  * Resolve the auto-save directory. `~` / `~/...` expands to the user home, so
- * the default `~/.dsh/media-studio` lands next to the dsh profile whatever the
- * OS account is; relative paths resolve against the session working directory.
+ * the default lands under the dsh home whatever the OS account is; relative
+ * paths resolve against the session working directory.
+ *
+ * The untouched default is profile-aware: under a named DSH profile it
+ * resolves to `~/.dsh/profiles/<profile>/media-studio`, so desktop / web /
+ * custom profiles each keep their own generated media. Explicitly configured
+ * values always pass through unchanged.
  */
 export declare function resolveOutputDir(outputDir: string, cwd: string | undefined): string;
 export interface CommitOptions {
